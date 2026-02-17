@@ -1,0 +1,9 @@
+.*
+*.md
+!README.md
+imgui.ini
+!.gitignore
+.cache
+build/
+bin/
+compile_commands.json
