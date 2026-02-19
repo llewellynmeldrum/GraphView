@@ -3,7 +3,7 @@
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
-#include "OpenGLHelpers.hpp"
+#include "GLContext.hpp"
 #include "SharedContext.hpp"
 #include "imgui_impl_glfw.h"
 #include <GLFW/glfw3.h>
@@ -12,8 +12,7 @@ static void error_callback(int error, const char* description) {
     LOG::err("GLFW Error {}: {}\n", error, description);
 }
 struct GLFWHandler {
-    // handles both openGL and GLFW context and calls
-    GLContext      gl;
+    GLContext      gl;  // opengl context
     SharedContext& shared;
 
     const char* getGLSLVersion();

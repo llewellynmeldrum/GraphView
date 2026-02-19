@@ -15,7 +15,7 @@
 #include "SharedContext.hpp"
 #include <GLFW/glfw3.h>
 
-#include "OpenGLHelpers.hpp"
+#include "GLContext.hpp"
 
 void GLFWHandler::init(const AppConfig& cfg) {
     glfwSetErrorCallback(error_callback);
@@ -61,7 +61,7 @@ void GLFWHandler::render() {
     glClearColor(COLOR(shared.bgColor));
     glClear(GL_COLOR_BUFFER_BIT);
 
-    gl.drawCircle();
+    gl.drawCircle({0.0f, 0.0f}, {0.2f, 0.8f, 1.0f, 1.0f}, 0.35f);
 
     if (shared.graphExists) {  // println("[{},{}]", viewportHeight, viewportWidth);
         drawGraph(shared.graphConfig.ptr.get());

@@ -7,8 +7,16 @@ TODO:
 - bfs first,
 - then dijkstras
 
+# Usage
+1. install dependencies
+2. 
+```bash
+make run
+
+```
 
 # Dependencies
+- GNU make
 - GLFW (http://www.glfw.org):
 ```md
 Linux:

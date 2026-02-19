@@ -35,16 +35,16 @@ struct Graph {
         Node  u{0}, v{0};
         float weight = 1.0;
     };
-    const GraphInitConfig init_cfg;
+    GraphInitConfig init_cfg;
 
     std::vector<std::vector<Node>> adjList;
     std::vector<Vec2>              nodePositions;  // euclidean position of nodes.
     std::vector<Edge>              edges;
 
-    Graph(GraphInitConfig& _init_cfg) : init_cfg(_init_cfg) {};
+    Graph() {};
 
-    void init();
-    void reset() { init(); }
+    void init(GraphInitConfig init_cfg);
+    void reset(auto init_cfg) { init(init_cfg); }
 
     inline void debug_print_adj() {
         std::println("ADJACENCY LIST:");

@@ -27,6 +27,7 @@ struct Vec3 {
     constexpr float& b() { return z; }
 
     // loses 4th param, explicit
+    Vec3(auto _x, auto _y, auto _z) : x(_x), y(_y), z(_z) {}
     explicit Vec3(ImVec4& rhs) : x(rhs.x), y(rhs.y), z(rhs.z) {}
     operator ImVec4() { return ImVec4{x, y, z, 0.0f}; }
 };
@@ -37,7 +38,7 @@ struct Vec4 {
     constexpr float& z() { return b; }
     constexpr float& w() { return a; }
 
-    Vec4(int x, int y, int z, int w) : r(x), g(y), b(z), a(w) {}
+    Vec4(auto x, auto y, auto z, auto w) : r(x), g(y), b(z), a(w) {}
     Vec4(ImVec4& rhs) : r(rhs.x), g(rhs.y), b(rhs.z), a(rhs.w) {}
     operator ImVec4() { return ImVec4{r, g, b, a}; }
 };

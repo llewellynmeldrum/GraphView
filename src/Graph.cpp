@@ -1,11 +1,14 @@
 #include "Graph.hpp"
 #include "SharedContext.hpp"
 
-void Graph::init() {
+void Graph::init(GraphInitConfig _init_cfg) {
+    this->init_cfg = _init_cfg;
+
     const int& V = init_cfg.V;
     const int& E = init_cfg.E;
     adjList = std::vector<std::vector<Node>>(V, std::vector<Node>());
     nodePositions = std::vector<Vec2>(V, Vec2());
+    println("V:{}, E:{}", V, E);
 
     auto [minx, miny] = init_cfg.minPos;
     auto [maxx, maxy] = init_cfg.maxPos;
@@ -29,7 +32,7 @@ void Graph::init() {
         // a nodes chance to get an edge = 1/(outDegree+1)
         // try every node until one gets it, or we do a full iteration.
         bool foundNode = false;
-        for (Node u = 0; u < V; u++) {
+        for (Node u = getRandomNode(); u < V; u = getRandomNode()) {
             float threshold = oddsOfReceivingEdge(u);
             if (Graph::rand() < threshold) {
                 Node v = getRandomNode();

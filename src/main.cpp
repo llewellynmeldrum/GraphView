@@ -23,11 +23,13 @@ struct Application {
 
     void generateGraph() {
         if (!shared.graphExists) {
-            shared.graphConfig.ptr = std::make_unique<Graph>(shared.graphInitConfig);
-            shared.graphConfig.ptr->init();
+            shared.graphConfig.ptr = std::make_unique<Graph>();
+            shared.graphConfig.ptr->init(shared.graphInitConfig);
         } else {
-            shared.graphConfig.ptr->reset();
+            shared.graphConfig.ptr->reset(shared.graphInitConfig);
         }
+        // configure graph based on the changes made in ui
+        //		shared.graphInitConfig.E =
         shared.graphExists = true;
         shared.graphInitConfig.minPos;
         shared.uiRequestsGraphGeneration = false;

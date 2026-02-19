@@ -7,7 +7,9 @@ void ImGuiHandler::composeGraphGenerationWindow(Vec2& viewport, ImGuiIO& io, Vec
 
     // ImGui::InputInt(const char* label, int* v, int step = 1, int step_fast = 100,
     // ImGuiInputTextFlags flags = 0);
-    IG::InputInt("V", &shared.graphInitConfig.V);
+    int before = shared.graphInitConfig.V;
+    IG::InputInt("V", &(shared.graphInitConfig.V));
+    if (shared.graphInitConfig.V != before) println("{}->{}", before, shared.graphInitConfig.V);
     IG::SetTooltip("Number of vertices (nodes) in the graph.");
     IG::InputInt("E", &shared.graphInitConfig.E);
     IG::SetTooltip("Number of edges in the graph.");
@@ -50,7 +52,6 @@ void ImGuiHandler::composeUI() {
 
         //        IG::SetNextWindowSize(viewport_sz * Vec2{0.4f, 0.4f});
         //        IG::ShowDebugLogWindow();
-        void();
     }
     IG::Render();  // calls IG::endFrame()
 }
