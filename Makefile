@@ -6,7 +6,7 @@
 # 4. Offer options to debug segfaults, using adsan, usan, etc
 # Do all of the above, but also make it pretty with fancy tput headers lol
 #--------------------------------------------------------------------------------------------------------
-.PHONY: all clean clean-a run debug help h ? docs 
+.PHONY: all clean cclean crun ccrun run debug help h ? docs 
 all: run
 ##---------------------------------------------------------------------
 ## Internal
@@ -39,6 +39,34 @@ SRC 		+=$(wildcard $(IMGUI_DIR)/*$(SRC_EXT))
 SRC 		+=$(IMGUI_GLFW) $(IMGUI_OPENGL)
 CXXFLAGS	+=-I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
 
+#glad 
+CXXFLAGS	+=-Iexternal/glad/include
+SRC 		+=external/src/glad.cpp
+
+##---------------------------------------------------------------------
+## GLAD (static lib)
+##---------------------------------------------------------------------
+CC := gcc
+CCFLAGS:=
+GLAD_DIR     := $(EXT_DIR)/glad
+GLAD_INC     := $(GLAD_DIR)/include
+GLAD_SRC     := $(GLAD_DIR)/src/glad.c
+
+GLAD_OBJ_DIR := $(OBJ_DIR)/external/src
+GLAD_OBJ     := $(GLAD_OBJ_DIR)/glad.o
+
+# Make sure glad headers are on the include path for your whole project
+CXXFLAGS += -I$(GLAD_INC)
+CCFLAGS   += -I$(GLAD_INC)
+
+
+# Compile glad.c (C file -> use CC/CFLAGS, not CXX/CXXFLAGS)
+$(GLAD_OBJ): $(GLAD_SRC)
+	@mkdir -p $(dir $@)
+	$(CC) $(CCFLAGS) -O2 -c $< -o $@
+
+# Link with it
+LDLIBS += $(GLAD_LIB)
 
 ##---------------------------------------------------------------------
 ## BUILD FLAGS PER PLATFORM
@@ -71,9 +99,9 @@ endif
 
 ##--<Should stay the same>---------------------------------------------
 #OBJS := $(patsubst $(SRC_EXT),$(OBJ_DIR)/%$(OBJ_EXT),$(SRC))
-OBJS := $(patsubst %$(SRC_EXT),$(OBJ_DIR)/%$(OBJ_EXT),$(SRC))
+OBJS := $(patsubst %$(SRC_EXT),$(OBJ_DIR)/%$(OBJ_EXT),$(SRC))\
+        $(patsubst %.c,$(OBJ_DIR)/%.o,$(filter %.c,$(SRC)))
 ##--<-------------------->---------------------------------------------
-
 $(OBJ_DIR)/%$(OBJ_EXT) : %$(SRC_EXT)
 	@$(ECHO_COMP_BANNER)
 	@mkdir -p $(dir $@)
@@ -84,6 +112,10 @@ $(EXE): $(EXE_DIR) $(OBJ_DIR) $(OBJS)
 	@$(ECHO_LINK_BANNER)
 	$(CXX) $(LDFLAGS) $(OBJS) -o $(EXE) $(LDLIBS)
 
+$(OBJ_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # executing binary
 run: $(EXE)
 	@$(ECHO_EXE_BANNER)
@@ -93,9 +125,12 @@ run: $(EXE)
 clean: 
 	$(ECHO_CLEAN_BANNER)
 	rm -rf build/src/* bin/* 
-clean-a: 
+cclean: 
 	$(ECHO_CLEAN_BANNER)
 	rm -rf build/* bin/* 
+
+crun: clean run
+ccrun: cclean run
 
 # ------------ DEBUGGING ------------ #
 debug: $(EXE)
@@ -103,7 +138,7 @@ debug: $(EXE)
 
 	
 # Address san: lower overhead than thread-san, cleaner stack traces,
-asan: CFLAGS  += -fsanitize=address -fno-omit-frame-pointer -g
+asan: CFLAGS  += -fsanitize=address -fno-omit-frame-pointer 
 asan: LDFLAGS += -fsanitize=address
 asan: LDLIBS  += -fsanitize=address
 asan: ASAN_ENV:= ASAN_OPTIONS=abort_on_error=1
