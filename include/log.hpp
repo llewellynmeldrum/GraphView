@@ -5,9 +5,6 @@
 #include <print>
 #define OSTREAM __stderrp
 
-#define c_assert(invariant)((invariant) ?\
-	void() :  \
-	LOG::err_exit("{}:{} -> Assertion failed: {}",__FILE__,__LINE__, #invariant))
 struct LOG {
 
 	template <class... Args>
