@@ -3,201 +3,86 @@
 #include "imgui_impl_opengl3.h"
 #include <cstdlib>
 #include <print>
-#define GL_SILENCE_DEPRECATION
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-	#include <GLES2/gl2.h>
-#endif
-#include <GLFW/glfw3.h>
+#include <vector>
 
-#include "log.hpp"
+#include "Colors.hpp"
+#include "GLFWHandler.hpp"
+#include "ImGuiHandler.hpp"
+#include "MirroredRingBuf.hpp"
+#include "SharedContext.hpp"
+#include "Vectors.hpp"
 
-using namespace std;
+struct Application {
+    SharedContext shared;
+    GLFWHandler   platform{shared};
+    ImGuiHandler  ui{shared};
+    AppConfig     cfg{
+                .PRINT_KEY_EVENTS = false,
+    };
+    std::unique_ptr<Graph> graph;
 
-namespace IG = ImGui;
-// OPENGL3
-struct SharedContext {
-	float mainScale;
-	GLFWwindow *viewport = nullptr;
-	const char *glslVersion = nullptr;
-	ImVec4 bgColor;
+    void generateGraph() {
+        if (!shared.graphExists) {
+            shared.graphConfig.ptr = std::make_unique<Graph>(shared.graphInitConfig);
+            shared.graphConfig.ptr->init();
+        } else {
+            shared.graphConfig.ptr->reset();
+        }
+        shared.graphExists = true;
+        shared.graphInitConfig.minPos;
+        shared.uiRequestsGraphGeneration = false;
+        // might have to add a timer to prevent generation happening too fast
+    }
+    void start();
+    void exit(int exitCode);
+
+ private:
+    void destroy();
 };
-
-constexpr bool ENABLE_VSYNC = true;
-
-// GLFW3
-struct GLFWHandler {
-	SharedContext &shared;
-
-	const char *getGLSLVersion();
-	static void error_callback(int error, const char* description);
-	GLFWHandler(auto& _shared): shared(_shared) {}
-
-
-	void handleInputs();
-	void render();
-	void init() {
-		glfwSetErrorCallback(error_callback);
-		if (!glfwInit()) {
-			LOG::err("Failed to initialize glfw.");
-			std::exit(EXIT_FAILURE);
-		}
-		auto primaryMonitor = glfwGetPrimaryMonitor();
-
-		shared.glslVersion = getGLSLVersion();
-		shared.mainScale = ImGui_ImplGlfw_GetContentScaleForMonitor(primaryMonitor);
-		int screenWidth = glfwGetVideoMode(primaryMonitor)->width;
-		int screenHeight = glfwGetVideoMode(primaryMonitor)->height;
-
-		shared.viewport = glfwCreateWindow(
-		                      (screenWidth / 2.0) * shared.mainScale,
-		                      screenHeight * shared.mainScale,
-		                      "Viewport title", nullptr, nullptr);
-		glfwSetWindowPos(shared.viewport, 0, 0);
-
-		if (!shared.viewport) {
-			LOG::err("Failed to initialize glfw - viewport (window) ptr is null.");
-			std::exit(EXIT_FAILURE);
-		}
-		glfwMakeContextCurrent(shared.viewport);
-		glfwSwapInterval(ENABLE_VSYNC); // enables vsync
-	}
-};
-
-
-struct ImGuiHandler {
-	SharedContext &shared;
-	ImGuiContext *context = nullptr;
-	ImVec4 bgColor;
-	ImGuiHandler(SharedContext& _shared): shared(_shared) { }
-	inline void init() {
-		IMGUI_CHECKVERSION();
-		context = IG::CreateContext();
-		auto& io = IG::GetIO();
-		(void)io;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-
-		IG::StyleColorsDark();
-		ImGuiStyle& style = IG::GetStyle();
-		style.ScaleAllSizes(shared.mainScale);
-		style.FontScaleDpi = shared.mainScale;
-
-		ImGui_ImplGlfw_InitForOpenGL(shared.viewport, true);
-		ImGui_ImplOpenGL3_Init(shared.glslVersion);
-		bgColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-	}
-	void composeUI();
-};
-
-void GLFWHandler::handleInputs() {
-	glfwPollEvents();
-}
-
-int msDelay = 10.0;
-
-void ImGuiHandler::composeUI() {
-	auto& io = IG::GetIO();
-	if (glfwGetWindowAttrib(shared.viewport, GLFW_ICONIFIED) != 0) {
-		ImGui_ImplGlfw_Sleep(10);
-		return;
-	}
-
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	IG::NewFrame();
-
-
-	{
-		static float f = 0.0f;
-		static int counter = 0;
-
-		IG::Begin("Configuration");                          // Create a window called "Hello, world!" and append into it.
-
-		IG::Text("Text.");               // Display some text (you can use a format strings too)
-		IG::SliderInt("msDelay", &msDelay, 0, 50);
-
-		if (IG::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-			counter++;
-		IG::SameLine();
-		IG::Text("counter = %d", counter);
-
-		IG::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-		IG::End();
-	}
-	IG::Render();
-}
-void GLFWHandler::render() {
-	int display_w, display_h;
-	glfwGetFramebufferSize(shared.viewport, &display_w, &display_h);
-	glViewport(0, 0, display_w, display_h);
-	glClearColor(bgColor.x * bgColor.w, bgColor.y * bgColor.w, bgColor.z * bgColor.w, bgColor.w);
-	glClear(GL_COLOR_BUFFER_BIT);
-	ImGui_ImplOpenGL3_RenderDrawData(IG::GetDrawData());
-	glfwSwapBuffers(shared.viewport);
-}
-
-// certain things need to interop
-bool shouldClose(auto* window) {
-	return glfwWindowShouldClose(window);
-}
-
-
-
-
-void cleanupScene(SharedContext& shared);
+Application app;
 
 int main() {
-	SharedContext 	shared;
-	GLFWHandler 	platform(shared);
-	ImGuiHandler 		ui(shared);
-
-	platform.init();
-	ui.init();
-	while (!shouldClose(shared.viewport)) {
-		platform.handleInputs();
-		ui.composeUI();
-		platform.draw();
-	}
-	cleanupScene(shared);
+    app.start();
+    while (!app.platform.shouldClose()) {
+        app.platform.handleInputs();
+        app.platform.handleUIUpdates();
+        if (app.shared.uiRequestsGraphGeneration) {
+            app.generateGraph();
+        }
+        app.ui.composeUI();
+        app.platform.render();
+    }
+    app.exit(EXIT_SUCCESS);
 }
 
-void cleanupScene(SharedContext& shared) {
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	IG::DestroyContext();
-	glfwDestroyWindow(shared.viewport);
-	glfwTerminate();
+void Application::start() {
+    platform.init(this->cfg);
+    ui.init(this->cfg);
+}
+void Application::destroy() {
+    platform.destroy();
+    ui.destroy();
 }
 
-inline void GLFWHandler::error_callback(int error, const char* description) {
-	LOG::err("GLFW Error {}: {}\n", error, description);
+void Application::exit(int exitCode) {
+    this->destroy();
+    printf("Exiting with code: %d\n", exitCode);
+    std::exit(exitCode);
 }
-const char *GLFWHandler::getGLSLVersion() {
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-	// GL ES 2.0 + GLSL 100 (WebGL 1.0)
-	const char *glslVersion = "#version 100";
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-#elif defined(IMGUI_IMPL_OPENGL_ES3)
-	// GL ES 3.0 + GLSL 300 es (WebGL 2.0)
-	const char *glslVersion = "#version 300 es";
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-#elif defined(__APPLE__)
-	// GL 3.2 + GLSL 150
-	const char *glslVersion = "#version 150";
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
-#else
-	// GL 3.0 + GLSL 130
-	const char *glslVersion = "#version 130";
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
-#endif
-	return glslVersion;
+
+void ImGuiHandler::destroy() {
+    glfwDestroyWindow(shared.p_viewport);
+    glfwTerminate();
+}
+
+void key_callback(GLFWwindow* win, int key, int scancode, int action, int mods) {
+    if (app.cfg.PRINT_KEY_EVENTS)
+        println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
+    switch (key) {
+    case 'C':
+        if (mods == GLFW_MOD_CONTROL) app.exit(EXIT_SUCCESS);
+        break;
+
+    default: break;
+    }
 }
