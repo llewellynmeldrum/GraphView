@@ -12,12 +12,12 @@ static void error_callback(int error, const char* description) {
     LOG::err("GLFW Error {}: {}\n", error, description);
 }
 struct GLFWHandler {
-    GLContext      gl;  // opengl context
     SharedContext& shared;
+    GLContext      gl;  // opengl context
+    const char*    getGLSLVersion();
 
-    const char* getGLSLVersion();
-
-    GLFWHandler(auto& _shared) : shared(_shared) {}
+    GLFWHandler(auto& _shared) : shared(_shared), gl(_shared) {}
+    //    GLFWHandler(auto& _shared) : shared(_shared){}
 
     void handleInputs();
     void handleUIUpdates();

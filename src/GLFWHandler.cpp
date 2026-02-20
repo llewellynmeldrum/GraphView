@@ -46,11 +46,10 @@ void GLFWHandler::init(const AppConfig& cfg) {
         std::exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(shared.p_viewport);
-    gl.initCircle();
+    gl.init();
     glfwSwapInterval(cfg.ENABLE_VSYNC);  // enables vsync
     glfwSetKeyCallback(shared.p_viewport, key_callback);
     const char* s = (const char*)glGetString(GL_VERSION);
-    gl.initCircle();
     println("OPENGL VERSION:{}", s);
 }
 
@@ -61,7 +60,8 @@ void GLFWHandler::render() {
     glClearColor(COLOR(shared.bgColor));
     glClear(GL_COLOR_BUFFER_BIT);
 
-    gl.drawCircle({0.0f, 0.0f}, {0.2f, 0.8f, 1.0f, 1.0f}, 0.35f);
+    gl.drawCircle(shared.temp.uPos, shared.temp.uRad, shared.temp.uCol);
+    //    gl.drawCircle();
 
     if (shared.graphExists) {  // println("[{},{}]", viewportHeight, viewportWidth);
         drawGraph(shared.graphConfig.ptr.get());
@@ -131,7 +131,7 @@ bool GLFWHandler::shouldClose() {
     return glfwWindowShouldClose(shared.p_viewport);
 }
 void GLFWHandler::destroy() {
-    gl.cleanupCircle();
+    gl.cleanup();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

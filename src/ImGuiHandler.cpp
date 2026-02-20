@@ -14,6 +14,11 @@ void ImGuiHandler::composeGraphGenerationWindow(Vec2& viewport, ImGuiIO& io, Vec
     IG::InputInt("E", &shared.graphInitConfig.E);
     IG::SetTooltip("Number of edges in the graph.");
 
+    IG::SetTooltip("");
+    IG::SliderFloat2("uPos", shared.temp.uPos.data(), -1.0f, 1.0f);
+    IG::SliderFloat("uRad", &shared.temp.uRad, 0.0f, 1.0f);
+    IG::SliderFloat4("uCol", shared.temp.uCol.data(), 0.0f, 1.0f);
+
     if (ImGui::Button("Generate Graph")) {
         shared.uiRequestsGraphGeneration = true;
     }

@@ -21,6 +21,15 @@ struct GLFWwindow;
     } while (0)
 
 struct SharedContext {
+    // for messing with opengl
+    struct Temporary {
+        std::array<float, 12> NDC_quad = {-1.f, -1.f, 1.f, -1.f, 1.f,  1.f,
+                                          -1.f, -1.f, 1.f, 1.f,  -1.f, 1.f};
+
+        Vec2  uPos{0.0f, 0.0f};
+        Vec4  uCol{0.2f, 0.8f, 1.0f, 1.0f};
+        float uRad{0.35f};
+    } temp;
     float          mainScale;
     bool           uiRequestsGraphGeneration = false;
     const GLColor& bgColor = DDARKGREY;

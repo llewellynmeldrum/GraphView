@@ -10,9 +10,9 @@ void Graph::init(GraphInitConfig _init_cfg) {
     nodePositions = std::vector<Vec2>(V, Vec2());
     println("V:{}, E:{}", V, E);
 
-    auto [minx, miny] = init_cfg.minPos;
-    auto [maxx, maxy] = init_cfg.maxPos;
-    println("Generating graph between bounds=[{},{}] and [{},{}]", minx, miny, maxx, maxy);
+    auto min = init_cfg.minPos;
+    auto max = init_cfg.maxPos;
+    println("Generating graph between bounds=[{},{}] and [{},{}]", min.x, min.y, max.x, max.y);
 
     // 1. Set a random position for each node
     for (Node u = 0; u < V; u++) {
