@@ -8,13 +8,13 @@ struct Vec2 {
     // convinience accesors
     constexpr float&        width()     { return x; }
     constexpr float&        height()    { return y; }
-              float*        data()      { updateArray(); return arr.data(); }
+              float*        data()      { return &x; }
 
 
-    Vec2()                      : x(0), y(0)            { updateArray(); }
-    Vec2(auto _x, auto _y)      : x(_x), y(_y)          { updateArray(); }
-    Vec2(float _x, float _y)    : x(_x), y(_y)          { updateArray(); }
-    Vec2(ImVec2& rhs)           : x(rhs.x), y(rhs.y)    { updateArray(); }
+    Vec2()                      : x(0), y(0)            {}
+    Vec2(auto _x, auto _y)      : x(_x), y(_y)          {}
+    Vec2(float _x, float _y)    : x(_x), y(_y)          {}
+    Vec2(ImVec2& rhs)           : x(rhs.x), y(rhs.y)    {}
 
     // implicit casts from ImVecs
     operator ImVec2() { return ImVec2{x, y}; }
@@ -29,9 +29,6 @@ struct Vec2 {
         return Vec2{x * rhs.x, y * rhs.y};
     }
 
- private:
-    std::array<float, 2> arr;
-    inline void updateArray() { arr = {x, y}; }
 };
 
 struct Vec3 {
@@ -39,18 +36,14 @@ struct Vec3 {
     constexpr float&        r()     { return x; }
     constexpr float&        g()     { return y; }
     constexpr float&        b()     { return z; }
-    float*                  data()  { updateArray(); return arr.data(); }
+    float*                  data()  { return &x; }
     
 
-    Vec3(auto _x, auto _y, auto _z) : x(_x), y(_y), z(_z) { updateArray(); }
+    Vec3(auto _x, auto _y, auto _z) : x(_x), y(_y), z(_z) { }
 
     // explicit cast because we are dropping off 1 float
     explicit Vec3(ImVec4& rhs) : x(rhs.x), y(rhs.y), z(rhs.z) {}
     explicit operator ImVec4() { return ImVec4{x, y, z, 0.0f}; }
-
- private:
-    std::array<float, 3> arr;
-    inline void updateArray() { arr = {x, y, z}; }
 };
 
 struct Vec4 {
@@ -59,14 +52,10 @@ struct Vec4 {
     constexpr float&        y() { return g; }
     constexpr float&        z() { return b; }
     constexpr float&        w() { return a; }
-    float*                  data(){updateArray(); return arr.data(); }
+    float*                  data(){return &r;}
 
-    Vec4(auto x, auto y, auto z, auto w) : r(x), g(y), b(z), a(w) {updateArray();}
+    Vec4(auto x, auto y, auto z, auto w) : r(x), g(y), b(z), a(w) {}
     Vec4(ImVec4& rhs) : r(rhs.x), g(rhs.y), b(rhs.z), a(rhs.w) {}
 
     operator ImVec4() { return ImVec4{r, g, b, a}; }
-
- private:
-    std::array<float, 4> arr;
-    inline void updateArray() { arr = {r, g, b, a}; }
 };
