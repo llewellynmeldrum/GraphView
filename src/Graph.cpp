@@ -6,8 +6,9 @@ void Graph::init(GraphInitConfig _init_cfg) {
 
     const int& V = init_cfg.V;
     const int& E = init_cfg.E;
-    adjList = std::vector<std::vector<Node>>(V, std::vector<Node>());
-    nodePositions = std::vector<Vec2>(V, Vec2());
+    adjList = std::vector<std::vector<Node>>(V);
+    nodePositions = std::vector<glm::vec2>(V);
+    nodeColors = std::vector<glm::vec4>(V, {1.0f, 1.0f, 1.0f, 1.0f});
     println("V:{}, E:{}", V, E);
 
     auto min = init_cfg.minPos;

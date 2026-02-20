@@ -36,7 +36,7 @@ glm::mat4 GLFWHandler::makeViewProjection(int width, int height, float zoomHalfH
     return proj * view;
 }
 
-void GLFWHandler::resizeCallback(int width, int height) {
+void GLFWHandler::OSWindowResized(int width, int height) {
     cam.aspectRatio = (height > 0) ? (float)width / (float)height : 1.0f;
     println("resize event detected, new AR:{}", cam.aspectRatio);
 }
@@ -74,7 +74,7 @@ void GLFWHandler::init() {
     gl.init();
     int width, height;
     glfwGetFramebufferSize(shared.p_viewport, &width, &height);
-    resizeCallback(width, height);
+    OSWindowResized(width, height);
     gl.viewProj = makeViewProjection(width, height);
 
     glfwSetWindowUserPointer(shared.p_viewport, this);
@@ -93,11 +93,9 @@ void GLFWHandler::render() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     gl.viewProj = makeViewProjection(width, height);
-    gl.drawCircle(shared.temp.centerWorld, shared.temp.radWorld, shared.temp.uCol);
-    println("[{},{}]", shared.temp.centerWorld.x, shared.temp.centerWorld.y);
-    //    gl.drawCircle();
+    gl.drawCircle({0, 0}, 200, {1, 0, 0, 0});
 
-    if (shared.graphExists) {  // println("[{},{}]", viewportHeight, viewportWidth);
+    if (shared.graphExists) {
         drawGraph(shared.graphConfig.ptr.get());
     }
 
@@ -105,43 +103,19 @@ void GLFWHandler::render() {
     glfwSwapBuffers(shared.p_viewport);
 }
 // clang-format on
-void GLFWHandler::handleInputs() {
-    glfwPollEvents();
-}
-void GLFWHandler::handleUIUpdates() {
-    if (shared.uiRequestsGraphGeneration) {
-        Vec2 window = getGLFWWindowSize();
-        println("[{},{}]", window.x, window.y);
-        float margin = shared.graphConfig.draw.edgeMargin;
-        // 10% from the left and 10% from the right
-        float minX = 0 + (margin * window.width());
-        float minY = 0 + (margin * window.height());
-
-        float maxX = 0 + ((1.0f - margin) * window.width());
-        float maxY = 0 + ((1.0f - margin) * window.height());
-        shared.graphInitConfig.minPos = Vec2{minX, minY};
-        shared.graphInitConfig.maxPos = Vec2{maxX, maxY};
-    }
-}
-
-void GLFWHandler::drawLine(const Vec2& s, const Vec2& t) {
-    //   println("Drawing Line from [{:02f},{:02f}]->[{:02f},{:02f}]", s.x, s.y, t.x, t.y);
-}
-
-void GLFWHandler::drawCircle(const Vec2& p, float extent) {
-    //    println("Drawing Circle centered at [{:02f},{:02f}]], diameter={:02f}.", p.x, p.y,
-    //    extent);
-}
-
 inline void GLFWHandler::drawNode(const Graph* G, Graph::Node u) {
-    const Vec2& pos = G->nodePositions[u];
-    drawCircle(pos, shared.graphConfig.draw.NodeSize_px);
+    const auto& pos = G->nodePositions[u];
+    const auto& nodeSize_px = shared.graphConfig.draw.NodeSize_px;
+    const auto& nodeColor = G->nodeColors[u];
+    gl.drawCircle(pos, nodeSize_px, nodeColor);
 }
 
 inline void GLFWHandler::drawEdge(const Graph* G, Graph::Edge edge) {
-    const Vec2& upos = G->nodePositions[edge.u];
-    const Vec2& vpos = G->nodePositions[edge.v];
-    drawLine(upos, vpos);
+    const auto& upos = G->nodePositions[edge.u];
+    const auto& vpos = G->nodePositions[edge.v];
+    (void)upos;
+    (void)vpos;
+    //    drawLine(upos, vpos);
 }
 void GLFWHandler::drawGraph(const Graph* G) {
     for (size_t u = 0; u < G->init_cfg.V; u++) {
@@ -152,17 +126,10 @@ void GLFWHandler::drawGraph(const Graph* G) {
     }
 }
 
-void GLFWHandler::renderUI() {
-}
-
-Vec2 GLFWHandler::getGLFWWindowSize() {
+glm::vec2 GLFWHandler::getGLFWWindowSize() {
     int windowWidth, windowHeight;
     glfwGetWindowSize(shared.p_viewport, &windowWidth, &windowHeight);
-    return Vec2{windowWidth, windowHeight};
-}
-
-bool GLFWHandler::shouldClose() {
-    return glfwWindowShouldClose(shared.p_viewport);
+    return glm::vec2{windowWidth, windowHeight};
 }
 void GLFWHandler::destroy() {
     gl.cleanup();
@@ -170,21 +137,31 @@ void GLFWHandler::destroy() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 }
+void GLFWHandler::handleInputs() {
+    glfwPollEvents();
+}
+void GLFWHandler::handleUIUpdates() {
+    if (shared.uiRequestsGraphGeneration) {
+        glm::vec2 window = getGLFWWindowSize();
+        println("[{},{}]", window.x, window.y);
+        float margin = shared.graphConfig.draw.edgeMargin;
+        // 10% from the left and 10% from the right
+        float minX = 0 + (margin * window.x);
+        float minY = 0 + (margin * window.y);
+
+        float maxX = 0 + ((1.0f - margin) * window.x);
+        float maxY = 0 + ((1.0f - margin) * window.y);
+        shared.graphInitConfig.minPos = glm::vec2{minX, minY};
+        shared.graphInitConfig.maxPos = glm::vec2{maxX, maxY};
+    }
+}
+
+bool GLFWHandler::shouldClose() {
+    return glfwWindowShouldClose(shared.p_viewport);
+}
 
 const char* GLFWHandler::getGLSLVersion() {
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-    // GL ES 2.0 + GLSL 100 (WebGL 1.0)
-    const char* glslVersion = "#version 100";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-#elif defined(IMGUI_IMPL_OPENGL_ES3)
-    // GL ES 3.0 + GLSL 300 es (WebGL 2.0)
-    const char* glslVersion = "#version 300 es";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
     // GL 3.2 + GLSL 150
     const char* glslVersion = "#version 150";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -201,24 +178,62 @@ const char* GLFWHandler::getGLSLVersion() {
 #endif
     return glslVersion;
 }
-static void error_callback_static(int error, const char* description) {
+// exclusively callback
+void GLFWHandler::error_callback_static(int error, const char* description) {
     LOG::err("GLFW Error {}: {}\n", error, description);
+}
+
+void GLFWHandler::mouseMoved(glm::vec2 nPos) {
+}
+void GLFWHandler::mousePressed(int button, int action, int mods) {
+}
+void GLFWHandler::mouseScrolled(double xoffset, double yoffset) {
+}
+void GLFWHandler::mouseEnteredOSWindow() {
+}
+void GLFWHandler::mouseLeftOSWindow() {
+}
+// clang-format off
+void GLFWHandler::mouse_scrolled_callback_static(GLFWwindow* window, double xoffset, double yoffset) {
+    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (inst) {
+        inst->mouseScrolled(xoffset, yoffset);
+    }
+}
+void GLFWHandler::mouse_entered_callback_static(GLFWwindow* window, int entered) {
+    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (inst) {
+        entered ? inst->mouseEnteredOSWindow() : inst->mouseLeftOSWindow();
+    }
+}
+void GLFWHandler::mouse_button_callback_static(GLFWwindow* window, int button, int action, int mods) {
+    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (inst) {
+        inst->mousePressed(button, action, mods);
+    }
+}
+void GLFWHandler::mouse_move_callback(GLFWwindow* window, double x, double y) {
+    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (inst) {
+        inst->mouseMoved(glm::vec2(x, y));
+    }
 }
 
 void GLFWHandler::key_callback_static(GLFWwindow* window, int key, int scancode, int action,
                                       int mods) {
-    auto* instance = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (instance) {
-        instance->keyCallback(key, scancode, action, mods);
+    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (inst) {
+        inst->keyPressed(key, scancode, action, mods);
     }
 }
+
 void GLFWHandler::framebuffer_size_callback_static(GLFWwindow* window, int width, int height) {
-    auto* instance = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (instance) {
-        instance->resizeCallback(width, height);
+    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (inst) {
+        inst->OSWindowResized(width, height);
     }
 }
-void GLFWHandler::keyCallback(int key, int scancode, int action, int mods) {
+void GLFWHandler::keyPressed(int key, int scancode, int action, int mods) {
     if (shared.cfg.PRINT_KEY_EVENTS)
         println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
     switch (key) {

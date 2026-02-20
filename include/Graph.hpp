@@ -2,18 +2,19 @@
 
 #include "Vectors.hpp"
 #include <cstddef>
+#include <glm/glm.hpp>
 #include <print>
 #include <random>
 #include <vector>
 
 struct Graph;
 struct GraphInitConfig {
-    bool noSelfEdges = true;
-    bool weighted = false;
-    Vec2 minPos;
-    Vec2 maxPos;
-    int  V = 1;
-    int  E = 0;
+    bool      noSelfEdges = true;
+    bool      weighted = false;
+    glm::vec2 minPos;
+    glm::vec2 maxPos;
+    int       V = 1;
+    int       E = 0;
 };
 
 struct GraphConfig {
@@ -38,7 +39,8 @@ struct Graph {
     GraphInitConfig init_cfg;
 
     std::vector<std::vector<Node>> adjList;
-    std::vector<Vec2>              nodePositions;  // euclidean position of nodes.
+    std::vector<glm::vec2>         nodePositions;  // euclidean position of nodes.
+    std::vector<glm::vec4>         nodeColors;     // euclidean position of nodes.
     std::vector<Edge>              edges;
 
     Graph() {};
@@ -68,7 +70,7 @@ struct Graph {
     inline void debug_print_positions() {
         std::println("POSITIONS :");
         int i = 0;
-        for (Vec2 p : nodePositions) {
+        for (const auto& p : nodePositions) {
             std::println("\t{} = [{},{}] ", i++, p.x, p.y);
         }
     }
@@ -81,7 +83,7 @@ struct Graph {
     float rand(float min = 0.0f, float max = 1.0f) {
         return std::uniform_real_distribution<float>{min, max}(_rand_engine);
     }
-    Vec2 randVec2(Vec2 min = {0, 0}, Vec2 max = {1, 1}) {
+    glm::vec2 randVec2(glm::vec2 min = {0, 0}, glm::vec2 max = {1, 1}) {
         return {rand(min.x, max.x), rand(min.y, max.y)};
     }
     Node getRandomNode() {

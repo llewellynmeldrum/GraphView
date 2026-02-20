@@ -108,7 +108,6 @@ std::vector<WindowFlag> windowFlags = {
 
 void ImGuiHandler::composeWindowAttributeTest(Vec2& viewport, ImGuiIO& io, Vec2 pos) {
     // Window which has window attributes toggleable via checkboxes
-    Vec2 window_sz = viewport * Vec2{0.5f, 0.25f};
     IG::Begin("Testing Attributes", &showPerformanceWindow, _flags);
     IG::Text("%d", _flags);
     for (auto& wf : windowFlags) {

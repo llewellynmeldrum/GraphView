@@ -19,7 +19,6 @@ struct Application {
         // configure graph based on the changes made in ui
         //		shared.graphInitConfig.E =
         shared.graphExists = true;
-        shared.graphInitConfig.minPos;
         shared.uiRequestsGraphGeneration = false;
         // might have to add a timer to prevent generation happening too fast
     }
