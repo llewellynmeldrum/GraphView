@@ -4,39 +4,59 @@
 #include <cstdio>
 #include <cstdlib>
 #include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <string>
 #include <vector>
 
 const char* GLContext::vertexShaderSource = R"GLSL( 
-		#version 410 core
+        #version 410 core
 
-        layout (location = 0) in vec2 aPos; 
+        layout (location = 0) in vec2 aLocal; 
 
-        out vec2 vPos;
+        uniform mat4 uViewProj;
+        uniform vec2 uCenterWorld;
+        uniform float uRadiusWorld;
+
+        out vec2 vLocal;
 
         void main() { 
-            vPos = aPos;
-			gl_Position = vec4(aPos, 0.0, 1.0); 
+            vLocal = aLocal;
+
+            vec2 worldPos = uCenterWorld + aLocal * uRadiusWorld;
+
+            gl_Position = uViewProj * vec4(worldPos, 0.0, 1.0); 
         }
     )GLSL";
 const char* GLContext::fragShaderSource = R"GLSL(
         #version 410 core
 
-        in vec2 vPos;
+        in vec2 vLocal;
         out vec4 FragColor;
-
-        uniform vec2  uCenter;
-        uniform float uRadius;
-        uniform vec4  uColor;
+        uniform vec4 uColor;
 
         void main() {
-            float dist = length(vPos - uCenter);
-            float edge = 0.002;
-            float alpha = 1.0 - smoothstep(uRadius, uRadius + edge, dist);
+            float dist = length(vLocal);
+            float width = fwidth(dist);
+            float alpha = 1.0 - smoothstep(1.0-width,  1.0 + width, dist);
             FragColor = vec4(uColor.rgb, uColor.a * alpha);
         }
     )GLSL";
 
+void GLContext::drawCircle(glm::vec2 c, float rad, glm::vec4 uCol) {
+    glUseProgram(programID);
+
+    // need:
+    glUniformMatrix4fv(glGetUniformLocation(programID, "uViewProj"), 1, GL_FALSE,
+                       glm::value_ptr(viewProj));
+    glUniform2fv(glGetUniformLocation(programID, "uCenterWorld"), 1, glm::value_ptr(c));
+    glUniform1f(glGetUniformLocation(programID, "uRadiusWorld"), rad);
+
+    glUniform4fv(glGetUniformLocation(programID, "uColor"), 1, glm::value_ptr(uCol));
+
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+}
 GLuint GLContext::InitShader(GLenum type, const char* src) {
     GLuint shaderID = glCreateShader(type);
     glShaderSource(shaderID, 1, &src, nullptr);
@@ -88,17 +108,6 @@ int GLContext::init() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     return 0;
-}
-
-void GLContext::drawCircle(Vec2 uCenter, float uRad, Vec4 uCol) {
-    glUseProgram(programID);
-    // passing params to the shaders
-    glUniform2f(glGetUniformLocation(programID, "uCenter"), uCenter.x, uCenter.y);
-    glUniform1f(glGetUniformLocation(programID, "uRadius"), uRad);
-    glUniform4f(glGetUniformLocation(programID, "uColor"), uCol.r, uCol.g, uCol.b, uCol.a);
-
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 /*

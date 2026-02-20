@@ -15,9 +15,8 @@ struct ImGuiHandler {
     ImGuiContext*    context = nullptr;
 
     ImGuiHandler(SharedContext& _shared) : shared(_shared) {}
-    MirroredRingBuf<float, 100> frameTimeSamples;
 
-    inline void init(const AppConfig& cfg) {
+    inline void init() {
         IMGUI_CHECKVERSION();
         context = IG::CreateContext();
         auto& io = IG::GetIO();
@@ -54,4 +53,5 @@ struct ImGuiHandler {
     WinFlag staticWindowFlagsNoCollapse =
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
             (saveIniSettings ? ImGuiWindowFlags_NoSavedSettings : 0x0);
+    MirroredRingBuf<float, 100> frameTimeSamples;
 };

@@ -19,12 +19,15 @@ make run
 - GNU make
 - GLFW (http://www.glfw.org):
 ```md
-Linux:
+Debian-based Linux:
   apt-get install libglfw-dev
-Mac OS X:
+MacOS:
   brew install glfw
-MSYS2:
-  pacman -S --noconfirm --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw
+```
+- GLM 
+```md
+MacOS:
+  brew install glm 
 ```
 - OpenGL, used as part of the ImGui backend, and used directly for rendering of the graphs
 - other 2 libraries are just embedded in /external
@@ -34,5 +37,6 @@ MSYS2:
 - ImGui: for UI. Also used to understand basics of GLFW.
 - OpenGL, used as part of the ImGui backend, and used directly for rendering of the graphs
 - glad: simplifies making certain OpenGL calls and allows for better usage of extensions
+- GLM: OpenGL graphics library
 
 

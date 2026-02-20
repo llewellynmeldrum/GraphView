@@ -2,16 +2,19 @@
 #include "SharedContext.hpp"
 #include "Vectors.hpp"
 #include <OpenGL/gltypes.h>
+#include <glm/glm.hpp>
 #include <string>
 struct GLContext {
     // try to make the public interface as narrow as possible
     // TODO: Remove! this is just for testing
     SharedContext& shared;
     GLContext(auto& _s) : shared(_s) {}
-    int  init();
-    void drawCircle(Vec2 uPos, float uRad, Vec4 uCol);
+    int init();
+
+    void drawCircle(glm::vec2 c, float rad, glm::vec4 uCol);
     void cleanup();
 
+    glm::mat4 viewProj;  // set by GLFW via resizeCallback()
  private:
     bool   checkProgError(GLuint STATUS_CODE);
     bool   checkShaderError(GLuint STATUS_CODE, GLuint shaderID);

@@ -5,6 +5,7 @@
 #include <print>
 #include <vector>
 
+#include "Application.hpp"
 #include "Colors.hpp"
 #include "GLFWHandler.hpp"
 #include "ImGuiHandler.hpp"
@@ -12,35 +13,6 @@
 #include "SharedContext.hpp"
 #include "Vectors.hpp"
 
-struct Application {
-    SharedContext shared;
-    GLFWHandler   platform{shared};
-    ImGuiHandler  ui{shared};
-    AppConfig     cfg{
-                .PRINT_KEY_EVENTS = false,
-    };
-    std::unique_ptr<Graph> graph;
-
-    void generateGraph() {
-        if (!shared.graphExists) {
-            shared.graphConfig.ptr = std::make_unique<Graph>();
-            shared.graphConfig.ptr->init(shared.graphInitConfig);
-        } else {
-            shared.graphConfig.ptr->reset(shared.graphInitConfig);
-        }
-        // configure graph based on the changes made in ui
-        //		shared.graphInitConfig.E =
-        shared.graphExists = true;
-        shared.graphInitConfig.minPos;
-        shared.uiRequestsGraphGeneration = false;
-        // might have to add a timer to prevent generation happening too fast
-    }
-    void start();
-    void exit(int exitCode);
-
- private:
-    void destroy();
-};
 Application app;
 
 int main() {
@@ -58,8 +30,8 @@ int main() {
 }
 
 void Application::start() {
-    platform.init(this->cfg);
-    ui.init(this->cfg);
+    platform.init();
+    ui.init();
 }
 void Application::destroy() {
     platform.destroy();
@@ -75,16 +47,4 @@ void Application::exit(int exitCode) {
 void ImGuiHandler::destroy() {
     glfwDestroyWindow(shared.p_viewport);
     glfwTerminate();
-}
-
-void key_callback(GLFWwindow* win, int key, int scancode, int action, int mods) {
-    if (app.cfg.PRINT_KEY_EVENTS)
-        println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
-    switch (key) {
-    case 'C':
-        if (mods == GLFW_MOD_CONTROL) app.exit(EXIT_SUCCESS);
-        break;
-
-    default: break;
-    }
 }

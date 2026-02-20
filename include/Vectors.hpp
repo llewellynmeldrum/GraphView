@@ -23,10 +23,32 @@ struct Vec2 {
     friend Vec2 operator*(const Vec2& lhs, const Vec2& rhs) {
         return Vec2{lhs.x * rhs.x, lhs.y * rhs.y};
     }
+    friend Vec2 operator*(const Vec2& lhs, const float& scalar) {
+        return Vec2{lhs.x * scalar, lhs.y * scalar};
+    }
+    friend Vec2& operator*=(Vec2& lhs, const float scalar) {
+        lhs.x*=scalar;
+        lhs.y*=scalar;
+        return lhs;
+    }
+    friend Vec2 operator+(const Vec2& lhs, const float& scalar) {
+        return Vec2{lhs.x + scalar, lhs.y + scalar};
+    }
+    friend Vec2 operator+(const Vec2& lhs, const Vec2& rhs) {
+        return Vec2{lhs.x + rhs.x, lhs.y + rhs.y};
+    }
+    friend Vec2 operator-(const Vec2& lhs, const Vec2& rhs) {
+        return Vec2{lhs.x + rhs.x, lhs.y + rhs.y};
+    }
     Vec2 operator*=(Vec2& rhs) {
         x *= rhs.x;
         y *= rhs.y;
         return Vec2{x * rhs.x, y * rhs.y};
+    }
+    Vec2 operator*=(float& scalar) {
+        x *= scalar;
+        y *= scalar;
+        return *this;
     }
 
 };
@@ -54,6 +76,7 @@ struct Vec4 {
     constexpr float&        w() { return a; }
     float*                  data(){return &r;}
 
+    Vec4(Vec2 v2, auto z, auto w) : r(v2.x), g(v2.y), b(z), a(w) {}
     Vec4(auto x, auto y, auto z, auto w) : r(x), g(y), b(z), a(w) {}
     Vec4(ImVec4& rhs) : r(rhs.x), g(rhs.y), b(rhs.z), a(rhs.w) {}
 

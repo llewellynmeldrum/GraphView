@@ -5,6 +5,7 @@
 #include "MirroredRingBuf.hpp"
 #include "Vectors.hpp"
 #include "log.hpp"
+#include <glm/glm.hpp>
 #include <random>
 
 // forward declare so as to not have to include entire header
@@ -20,16 +21,20 @@ struct GLFWwindow;
         IMGUI_DEBUG_LOG("%s\n", s.c_str());                                                        \
     } while (0)
 
+struct Application;
 struct SharedContext {
     // for messing with opengl
+    Application* app;
+    SharedContext(Application* _app) : app(_app) {}
     struct Temporary {
         std::array<float, 12> NDC_quad = {-1.f, -1.f, 1.f, -1.f, 1.f,  1.f,
                                           -1.f, -1.f, 1.f, 1.f,  -1.f, 1.f};
 
-        Vec2  uPos{0.0f, 0.0f};
-        Vec4  uCol{0.2f, 0.8f, 1.0f, 1.0f};
-        float uRad{0.35f};
+        glm::vec2 centerWorld{0.0f, 0.0f};
+        glm::vec4 uCol{0.2f, 0.8f, 1.0f, 1.0f};
+        float     radWorld{35.0f};
     } temp;
+
     float          mainScale;
     bool           uiRequestsGraphGeneration = false;
     const GLColor& bgColor = DDARKGREY;
@@ -39,9 +44,8 @@ struct SharedContext {
     bool            graphExists = false;
     GraphInitConfig graphInitConfig{};
     GraphConfig     graphConfig{};
-};
-
-struct AppConfig {
-    static constexpr bool ENABLE_VSYNC = true;
-    bool                  PRINT_KEY_EVENTS = false;
+    struct AppConfig {
+        static constexpr bool ENABLE_VSYNC = true;
+        bool                  PRINT_KEY_EVENTS = false;
+    } cfg;
 };

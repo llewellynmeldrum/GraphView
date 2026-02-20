@@ -12,13 +12,37 @@
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
+#include "Application.hpp"
 #include "SharedContext.hpp"
 #include <GLFW/glfw3.h>
 
 #include "GLContext.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
-void GLFWHandler::init(const AppConfig& cfg) {
-    glfwSetErrorCallback(error_callback);
+glm::mat4 GLFWHandler::makeViewProjection(int width, int height, float zoomHalfHeight = 500.0f) {
+    const float halfH = zoomHalfHeight;
+    const float halfW = halfH * cam.aspectRatio;
+
+    // Projection: map world rectangle -> clip
+    glm::mat4 proj = glm::ortho(-halfW, +halfW,  // left, right
+                                -halfH, +halfH,  // bottom, top
+                                -1.0f, +1.0f);
+
+    // View: move the world opposite the camera position
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-cam.pos, 0.0f));
+
+    return proj * view;
+}
+
+void GLFWHandler::resizeCallback(int width, int height) {
+    cam.aspectRatio = (height > 0) ? (float)width / (float)height : 1.0f;
+    println("resize event detected, new AR:{}", cam.aspectRatio);
+}
+
+void GLFWHandler::init() {
+    glfwSetErrorCallback(error_callback_static);
     if (!glfwInit()) {
         LOG::err("Failed to initialize glfw.");
         std::exit(EXIT_FAILURE);
@@ -46,21 +70,31 @@ void GLFWHandler::init(const AppConfig& cfg) {
         std::exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(shared.p_viewport);
+    glfwSwapInterval(shared.cfg.ENABLE_VSYNC);
     gl.init();
-    glfwSwapInterval(cfg.ENABLE_VSYNC);  // enables vsync
-    glfwSetKeyCallback(shared.p_viewport, key_callback);
+    int width, height;
+    glfwGetFramebufferSize(shared.p_viewport, &width, &height);
+    resizeCallback(width, height);
+    gl.viewProj = makeViewProjection(width, height);
+
+    glfwSetWindowUserPointer(shared.p_viewport, this);
+    glfwSetKeyCallback(shared.p_viewport, key_callback_static);
+    glfwSetFramebufferSizeCallback(shared.p_viewport, framebuffer_size_callback_static);
+
     const char* s = (const char*)glGetString(GL_VERSION);
     println("OPENGL VERSION:{}", s);
 }
 
 void GLFWHandler::render() {
-    int fbufferWidth, fbufferHeight;
-    glfwGetFramebufferSize(shared.p_viewport, &fbufferWidth, &fbufferHeight);
-    glViewport(0, 0, fbufferWidth, fbufferHeight);
+    int width, height;
+    glfwGetFramebufferSize(shared.p_viewport, &width, &height);
+    glViewport(0, 0, width, height);
     glClearColor(COLOR(shared.bgColor));
     glClear(GL_COLOR_BUFFER_BIT);
 
-    gl.drawCircle(shared.temp.uPos, shared.temp.uRad, shared.temp.uCol);
+    gl.viewProj = makeViewProjection(width, height);
+    gl.drawCircle(shared.temp.centerWorld, shared.temp.radWorld, shared.temp.uCol);
+    println("[{},{}]", shared.temp.centerWorld.x, shared.temp.centerWorld.y);
     //    gl.drawCircle();
 
     if (shared.graphExists) {  // println("[{},{}]", viewportHeight, viewportWidth);
@@ -166,4 +200,34 @@ const char* GLFWHandler::getGLSLVersion() {
     // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
     return glslVersion;
+}
+static void error_callback_static(int error, const char* description) {
+    LOG::err("GLFW Error {}: {}\n", error, description);
+}
+
+void GLFWHandler::key_callback_static(GLFWwindow* window, int key, int scancode, int action,
+                                      int mods) {
+    auto* instance = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (instance) {
+        instance->keyCallback(key, scancode, action, mods);
+    }
+}
+void GLFWHandler::framebuffer_size_callback_static(GLFWwindow* window, int width, int height) {
+    auto* instance = (GLFWHandler*)glfwGetWindowUserPointer(window);
+    if (instance) {
+        instance->resizeCallback(width, height);
+    }
+}
+void GLFWHandler::keyCallback(int key, int scancode, int action, int mods) {
+    if (shared.cfg.PRINT_KEY_EVENTS)
+        println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
+    switch (key) {
+    case 'C':
+        if (mods == GLFW_MOD_CONTROL) {
+            shared.app->exit(EXIT_SUCCESS);
+        }
+        break;
+
+    default: break;
+    }
 }
