@@ -31,7 +31,7 @@ void Graph::init(GraphInitConfig _init_cfg) {
     // i.e the more outgoing edges, the less likely a node is to get another.
     for (size_t ei = 0; ei < E; ei++) {
         // a nodes chance to get an edge = 1/(outDegree+1)
-        // try every node until one gets it, or we do a full iteration.
+        // try a random node V times.
         bool foundNode = false;
         for (Node u = getRandomNode(); u < V; u = getRandomNode()) {
             float threshold = oddsOfReceivingEdge(u);
@@ -40,12 +40,10 @@ void Graph::init(GraphInitConfig _init_cfg) {
                 if (init_cfg.noSelfEdges && u == v) continue;
                 adjList[u].push_back(v);
                 edges.push_back({u, v});
-                // succesfully added an edge, break
                 foundNode = true;
                 break;
             }
         }
-        // We iterated through the whole list without a match, just pair up two random nodes
         if (!foundNode) {
             Node u = getRandomNode();
             Node v = getRandomNode();
