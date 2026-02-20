@@ -60,9 +60,13 @@ void GLFWHandler::init() {
     int screenWidth = glfwGetVideoMode(primaryMonitor)->width;
     int screenHeight = glfwGetVideoMode(primaryMonitor)->height;
 
-    shared.p_viewport =
-            glfwCreateWindow((screenWidth / 2.0) * shared.mainScale,
-                             screenHeight * shared.mainScale, "Viewport title", nullptr, nullptr);
+#ifndef DEBUG
+    Vec2 viewport{screenWidth*shared.mainScale,screenHeight*shared.mainScale};
+#else
+    Vec2 viewport{screenWidth*shared.mainScale/2.0f,screenHeight*shared.mainScale};
+#endif
+    shared.p_viewport = glfwCreateWindow(viewport.x,viewport.y, "window", nullptr, nullptr);
+
     glfwSetWindowPos(shared.p_viewport, 0, 0);
 
     if (!shared.p_viewport) {
