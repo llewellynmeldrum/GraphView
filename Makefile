@@ -7,7 +7,17 @@
 # Do all of the above, but also make it pretty with fancy tput headers lol
 #--------------------------------------------------------------------------------------------------------
 .PHONY: all clean cclean crun ccrun run debug help h ? docs 
-all: run
+N_THREADS:=4
+ifeq ($(UNAME_S), Linux) #LINUX
+	N_THREADS:= $(shell nproc)
+endif
+
+ifeq ($(UNAME_S), Darwin) #APPLE
+	N_THREADS:= $(shell sysctl -n hw.logicalcpu)
+endif
+
+all: 
+	$(MAKE) -j$(N_THREADS) run
 ##---------------------------------------------------------------------
 ## Internal
 ##---------------------------------------------------------------------
@@ -25,8 +35,8 @@ INC_DIR 	:=include
 EXT_DIR 	:=external
 
 SRC 		:=$(wildcard $(SRC_DIR)/*$(SRC_EXT)) 
-CXXFLAGS 	:=-std=c++2b -I$(INC_DIR) -Wall -Wformat -g -fno-omit-frame-pointer
-LDFLAGS		:=-g -fno-omit-frame-pointer
+CXXFLAGS 	:=-std=c++2b -I$(INC_DIR) -Wall -Wformat -O0
+LDFLAGS		:=
 LDLIBS		:=
 
 ##---------------------------------------------------------------------
@@ -63,7 +73,7 @@ CCFLAGS   += -I$(GLAD_INC)
 # Compile glad.c (C file -> use CC/CFLAGS, not CXX/CXXFLAGS)
 $(GLAD_OBJ): $(GLAD_SRC)
 	@mkdir -p $(dir $@)
-	$(CC) $(CCFLAGS) -O2 -c $< -o $@
+	$(CC) $(CCFLAGS) -c $< -o $@
 
 # Link with it
 LDLIBS += $(GLAD_LIB)
