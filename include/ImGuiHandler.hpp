@@ -32,26 +32,32 @@ struct ImGuiHandler {
         ImGui_ImplOpenGL3_Init(shared.p_glslVersion);
     }
 
-    void composeUI();
+    void drawUI();
     void destroy();
+    struct WindowConfig {
+        const Vec2     pos{0.0f, 0.0f};
+        const Vec2     size{1.0f, 1.0f};
+        const ImGuiIO& io;
+        bool           shown = false;
+    };
 
  private:
+    MirroredRingBuf<float, 250> frameTimeSamples;
+
+    // window functions shall take in a windowConfig
+    // and return the bottom right corner pos, for tiling
+    Vec2 drawPerformanceWindow(WindowConfig win);
+    Vec2 drawWindowAttributeTest(WindowConfig win);
+    Vec2 drawGraphGenerationWindow(WindowConfig win);
+    Vec2 drawGraphVisualSettings(WindowConfig win);
+
     void imguiTextWithTooltip(const char* text, const char* tooltip);
-    // perf window
-    bool showPerformanceWindow = true;
-    Vec2 composePerformanceWindow(Vec2& viewport, ImGuiIO& io, Vec2 pos);
-    void composeWindowAttributeTest(Vec2& viewport, ImGuiIO& io, Vec2 pos);
-    void composeGraphGenerationWindow(Vec2& viewport, ImGuiIO& io, Vec2 pos);
-
     void setTooltipWrap(const char* tooltip);
-    using WinFlag = ImGuiWindowFlags;
 
-    WinFlag saveIniSettings = true;
-
-    WinFlag staticWindowFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize;
-
-    WinFlag staticWindowFlagsNoCollapse =
-            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse |
-            (saveIniSettings ? ImGuiWindowFlags_NoSavedSettings : 0x0);
-    MirroredRingBuf<float, 100> frameTimeSamples;
+#define WFLAG(flag) ImGuiWindowFlags_##flag
+    enum WindowFlags {
+        STATIC = WFLAG(NoMove) | WFLAG(NoResize) | WFLAG(NoScrollbar) | WFLAG(NoScrollWithMouse) |
+                 ImGuiWindowFlags_NoDecoration,
+        DYNAMIC = ImGuiWindowFlags_AlwaysAutoResize,
+    };
 };

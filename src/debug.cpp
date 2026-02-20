@@ -106,9 +106,9 @@ std::vector<WindowFlag> windowFlags = {
 };
 // clang-format on
 
-void ImGuiHandler::composeWindowAttributeTest(Vec2& viewport, ImGuiIO& io, Vec2 pos) {
+Vec2 ImGuiHandler::drawWindowAttributeTest(WindowConfig win) {
     // Window which has window attributes toggleable via checkboxes
-    IG::Begin("Testing Attributes", &showPerformanceWindow, _flags);
+    IG::Begin("Testing Attributes", &win.shown, _flags);
     IG::Text("%d", _flags);
     for (auto& wf : windowFlags) {
         IG::PushID(wf.mask);
@@ -120,4 +120,5 @@ void ImGuiHandler::composeWindowAttributeTest(Vec2& viewport, ImGuiIO& io, Vec2 
         IG::PopID();
     }
     IG::End();
+    return {0, 0};
 }

@@ -23,7 +23,7 @@ int main() {
         if (app.shared.uiRequestsGraphGeneration) {
             app.generateGraph();
         }
-        app.ui.composeUI();
+        app.ui.drawUI();
         app.platform.render();
     }
     app.exit(EXIT_SUCCESS);

@@ -3,41 +3,70 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 
-void ImGuiHandler::composeGraphGenerationWindow(Vec2& viewport, ImGuiIO& io, Vec2 pos) {
-    IG::SetNextWindowSize(viewport * Vec2{0.4f, 0.4f});
-    IG::Begin("Graph Generation", nullptr, ImGuiWindowFlags_None);
+#define ADDR(x) glm::value_ptr(x)
+using IGH = ImGuiHandler;
+Vec2 IGH::drawGraphVisualSettings(WindowConfig win) {
+    IG::SetNextWindowPos(win.pos, ImGuiCond_FirstUseEver);
+    IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
+    IG::Begin("Graph Visuals", &win.shown, WindowFlags::DYNAMIC);
 
     // ImGui::InputInt(const char* label, int* v, int step = 1, int step_fast = 100,
     // ImGuiInputTextFlags flags = 0);
-    int before = shared.graphInitConfig.V;
+    IG::SliderFloat("Node Radius (px)", &(shared.graphConfig.draw.NodeSize_px), 0.0f, 100.0f);
+    IGH::setTooltipWrap("Node radius in pixels.");
+
+    IG::SliderFloat2("Camera pos", ADDR(shared.cam.pos), -1000.0f, 1000.0f);
+    IGH::setTooltipWrap("Dingleberry.");
+
+    IG::SliderFloat("Camera zoom", &(shared.cam.zoom), 0.0f, 10.0f);
+    IGH::setTooltipWrap("Dingleberry.");
+
+    IG::End();
+    return {win.pos.x, win.pos.y + win.pos.y};
+    // bototm left
+}
+Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
+    IG::SetNextWindowPos(win.pos, ImGuiCond_FirstUseEver);
+    IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
+    IG::Begin("Graph Generation", &win.shown, WindowFlags::DYNAMIC);
+
+    // ImGui::InputInt(const char* label, int* v, int step = 1, int step_fast = 100,
+    // ImGuiInputTextFlags flags = 0);
     IG::InputInt("V", &(shared.graphInitConfig.V));
-    if (shared.graphInitConfig.V != before) println("{}->{}", before, shared.graphInitConfig.V);
-    IG::SetTooltip("Number of vertices (nodes) in the graph.");
+    IGH::setTooltipWrap("Number of vertices (nodes) in the graph.");
+
     IG::InputInt("E", &shared.graphInitConfig.E);
-    IG::SetTooltip("Number of edges in the graph.");
+    IGH::setTooltipWrap("Number of edges in the graph.");
 
-    IG::SetTooltip("");
-    IG::SliderFloat2("worldPos", glm::value_ptr(shared.temp.centerWorld), -100, 100);
-    IG::SliderFloat("radius", &shared.temp.radWorld, 0, 100);
-    IG::SliderFloat4("color", glm::value_ptr(shared.temp.uCol), 0.0f, 1.0f);
-
-    if (ImGui::Button("Generate Graph")) {
+    ImGui::Button("Generate Graph");
+    if (ImGui::IsItemActive()) {
         shared.uiRequestsGraphGeneration = true;
     }
 
-    if (ImGui::Button("Print adjlist")) {
-        shared.graphConfig.ptr->debug_print_adj();
-    }
-    if (ImGui::Button("Print edges")) {
-        shared.graphConfig.ptr->debug_print_edges();
+    if (!shared.graphExists) {
+        IG::BeginDisabled();
     }
 
-    if (ImGui::Button("Print positions")) {
-        shared.graphConfig.ptr->debug_print_positions();
+    {
+        if (ImGui::Button("Print adjlist")) {
+            shared.graphConfig.ptr->debug_print_adj();
+        }
+        if (ImGui::Button("Print edges")) {
+            shared.graphConfig.ptr->debug_print_edges();
+        }
+
+        if (ImGui::Button("Print positions")) {
+            shared.graphConfig.ptr->debug_print_positions();
+        }
+    }
+    if (!shared.graphExists) {
+        IG::EndDisabled();
     }
     IG::End();
+    return {win.pos.x, win.pos.y + win.pos.y};
+    // bototm left
 }
-void ImGuiHandler::composeUI() {
+void IGH::drawUI() {
     auto& io = IG::GetIO();
     frameTimeSamples.write(io.DeltaTime * 1000.0f);
 
@@ -45,29 +74,23 @@ void ImGuiHandler::composeUI() {
         ImGui_ImplGlfw_Sleep(10);
         return;
     }
-    Vec2 viewport_sz = IG::GetMainViewport()->Size;
+    Vec2 viewport = IG::GetMainViewport()->Size;
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     IG::NewFrame();
     {
-        auto rightCorner = composePerformanceWindow(viewport_sz, io, Vec2{0, 0});
-
-        // composeWindowAttributeTest(viewport_sz, io, Vec2{100,100});
-
-        composeGraphGenerationWindow(viewport_sz, io, Vec2{0, rightCorner.y});
-
-        //        IG::SetNextWindowSize(viewport_sz * Vec2{0.4f, 0.4f});
-        //        IG::ShowDebugLogWindow();
+        auto prev = drawPerformanceWindow({{0.5f, 0.1f}, {0, 0}, io});
+        drawGraphGenerationWindow({{0.5f, 0.1f}, prev, io});
+        drawGraphVisualSettings({{0.5, 0.1}, prev, io});
     }
     IG::Render();  // calls IG::endFrame()
 }
-Vec2 ImGuiHandler::composePerformanceWindow(Vec2& viewport, ImGuiIO& io, Vec2 pos) {
-    Vec2 window_sz = viewport * Vec2{1.0f, 0.1f};
-    IG::SetNextWindowPos(pos);
-    IG::SetNextWindowSize(window_sz);
+Vec2 IGH::drawPerformanceWindow(IGH::WindowConfig win) {
+    IG::SetNextWindowPos(win.pos);
+    IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
 
-    IG::Begin("Performance", &showPerformanceWindow, staticWindowFlags & ImGuiWindowFlags_MenuBar);
+    IG::Begin("Performance", &win.shown, WindowFlags::STATIC);
     if (IG::BeginMenuBar()) {
         if (IG::BeginMenu("File")) {
             if (IG::MenuItem("Open..", "Ctrl+O")) { /* Do stuff */
@@ -75,30 +98,26 @@ Vec2 ImGuiHandler::composePerformanceWindow(Vec2& viewport, ImGuiIO& io, Vec2 po
             if (IG::MenuItem("Save", "Ctrl+S")) { /* Do stuff */
             }
             if (IG::MenuItem("Close", "Ctrl+W")) {
-                showPerformanceWindow = false;
+                win.shown = true;
             }
             IG::EndMenu();
         }
         IG::EndMenuBar();
     }
 
-    float fps = io.Framerate;
+    float fps = win.io.Framerate;
     float msPerFrame = 1000.0f / fps;
     IG::Text("%.3f ms/frame (%.1f FPS)", msPerFrame, fps);
 
-    auto graphSize = window_sz;
-    graphSize.height() *= 0.5;
-    // IMGUI_API void          PlotLines(const char* label, const float* values, int values_count,
-    // int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float
-    // scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0, 0), int stride = sizeof(float));
+    auto plotSize = win.size * Vec2{1, 0.5};
     IG::PlotLines("frametime", frameTimeSamples, frameTimeSamples.capacity(), 0, nullptr, 0.0f,
-                  30.0f, graphSize);
+                  30.0f, plotSize);
 
     IG::End();
-    return Vec2{pos.x, pos.y + window_sz.height()};
+    return Vec2{win.pos.x + win.size.x, win.pos.y + win.size.y};
 }
 
-void ImGuiHandler::setTooltipWrap(const char* tooltip) {
+void IGH::setTooltipWrap(const char* tooltip) {
     if (ImGui::BeginItemTooltip()) {
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);  // Optional: wrap text
         ImGui::Text("%s", tooltip);
@@ -106,7 +125,7 @@ void ImGuiHandler::setTooltipWrap(const char* tooltip) {
         ImGui::End();
     }
 }
-void ImGuiHandler::imguiTextWithTooltip(const char* text, const char* tip) {
+void IGH::imguiTextWithTooltip(const char* text, const char* tip) {
     ImGui::Text("%s", text);
     setTooltipWrap(tip);
 }

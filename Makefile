@@ -21,6 +21,9 @@ all:
 ##---------------------------------------------------------------------
 ## Internal
 ##---------------------------------------------------------------------
+C:
+	@make clean
+	make
 
 EXE_DIR		:=bin
 EXE_NAME 	:=test
@@ -148,9 +151,9 @@ debug: $(EXE)
 
 	
 # Address san: lower overhead than thread-san, cleaner stack traces,
-asan: CFLAGS  += -fsanitize=address -fno-omit-frame-pointer 
-asan: LDFLAGS += -fsanitize=address
-asan: LDLIBS  += -fsanitize=address
+asan: CXXFLAGS  +=-g -fsanitize=address -fno-omit-frame-pointer
+asan: LDFLAGS +=-g -fsanitize=address
+asan: LDLIBS  +=-g -fsanitize=address
 asan: ASAN_ENV:= ASAN_OPTIONS=abort_on_error=1
 asan: clean run 
 

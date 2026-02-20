@@ -21,9 +21,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-glm::mat4 GLFWHandler::makeViewProjection(int width, int height, float zoomHalfHeight = 500.0f) {
+glm::mat4 GLFWHandler::makeViewProjection(int width, int height, float zoomHalfHeight) {
     const float halfH = zoomHalfHeight;
-    const float halfW = halfH * cam.aspectRatio;
+    const float halfW = halfH * shared.cam.aspectRatio;
 
     // Projection: map world rectangle -> clip
     glm::mat4 proj = glm::ortho(-halfW, +halfW,  // left, right
@@ -31,14 +31,14 @@ glm::mat4 GLFWHandler::makeViewProjection(int width, int height, float zoomHalfH
                                 -1.0f, +1.0f);
 
     // View: move the world opposite the camera position
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-cam.pos, 0.0f));
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-shared.cam.pos, 0.0f));
 
     return proj * view;
 }
 
 void GLFWHandler::OSWindowResized(int width, int height) {
-    cam.aspectRatio = (height > 0) ? (float)width / (float)height : 1.0f;
-    println("resize event detected, new AR:{}", cam.aspectRatio);
+    shared.cam.aspectRatio = (height > 0) ? (float)width / (float)height : 1.0f;
+    println("resize event detected, new AR:{}", shared.cam.aspectRatio);
 }
 
 void GLFWHandler::init() {
@@ -75,7 +75,7 @@ void GLFWHandler::init() {
     int width, height;
     glfwGetFramebufferSize(shared.p_viewport, &width, &height);
     OSWindowResized(width, height);
-    gl.viewProj = makeViewProjection(width, height);
+    //    gl.viewProj = makeViewProjection(width, height);
 
     glfwSetWindowUserPointer(shared.p_viewport, this);
     glfwSetKeyCallback(shared.p_viewport, key_callback_static);
@@ -92,8 +92,9 @@ void GLFWHandler::render() {
     glClearColor(COLOR(shared.bgColor));
     glClear(GL_COLOR_BUFFER_BIT);
 
-    gl.viewProj = makeViewProjection(width, height);
-    gl.drawCircle({0, 0}, 200, {1, 0, 0, 0});
+    constexpr float DEFAULT_ZOOM_AMOUNT = 500.0f;
+    gl.viewProj = makeViewProjection(width, height, DEFAULT_ZOOM_AMOUNT / shared.cam.zoom);
+    gl.drawCircle({0, 0}, 25, {1, 0, 0, 1});
 
     if (shared.graphExists) {
         drawGraph(shared.graphConfig.ptr.get());
@@ -141,16 +142,17 @@ void GLFWHandler::handleInputs() {
     glfwPollEvents();
 }
 void GLFWHandler::handleUIUpdates() {
+    // make it in a big square around 0,0, maybe sl = 450
+    //
     if (shared.uiRequestsGraphGeneration) {
-        glm::vec2 window = getGLFWWindowSize();
-        println("[{},{}]", window.x, window.y);
+        float sideLen = 450;
         float margin = shared.graphConfig.draw.edgeMargin;
         // 10% from the left and 10% from the right
-        float minX = 0 + (margin * window.x);
-        float minY = 0 + (margin * window.y);
+        float minX = -sideLen + (margin * sideLen);
+        float minY = -sideLen + (margin * sideLen);
 
-        float maxX = 0 + ((1.0f - margin) * window.x);
-        float maxY = 0 + ((1.0f - margin) * window.y);
+        float maxX = 0 + ((1.0f - margin) * sideLen);
+        float maxY = 0 + ((1.0f - margin) * sideLen);
         shared.graphInitConfig.minPos = glm::vec2{minX, minY};
         shared.graphInitConfig.maxPos = glm::vec2{maxX, maxY};
     }

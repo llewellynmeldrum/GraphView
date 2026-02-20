@@ -9,14 +9,6 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 struct GLFWHandler {
-    struct Camera {
-        glm::vec2              origin = {0.0f, 0.0f};
-        glm::vec2              pos = {0.0f, 0.0f};
-        float                  zoom = 1.0f;
-        static constexpr float w2sFactor = 1.0f;  // x units per pixel
-        float                  aspectRatio = 1.0f;
-        // use glm::vec2 GLFWHandler::getGLFWWindowSize(); to update
-    } cam;
     SharedContext& shared;
     GLContext      gl;  // opengl context
     const char*    getGLSLVersion();

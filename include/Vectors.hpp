@@ -17,10 +17,13 @@ struct Vec2 {
     Vec2(ImVec2& rhs)           : x(rhs.x), y(rhs.y)    {}
 
     // implicit casts from ImVecs
-    operator ImVec2() { return ImVec2{x, y}; }
+    operator ImVec2() const { return ImVec2{x, y}; }
 
     // WARNING: this is NOT a dot product, this is element wise mult
     friend Vec2 operator*(const Vec2& lhs, const Vec2& rhs) {
+        return Vec2{lhs.x * rhs.x, lhs.y * rhs.y};
+    }
+    friend Vec2 operator*=(const Vec2& lhs, const ImVec2& rhs) {
         return Vec2{lhs.x * rhs.x, lhs.y * rhs.y};
     }
     friend Vec2 operator*(const Vec2& lhs, const float& scalar) {

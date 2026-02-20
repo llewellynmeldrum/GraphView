@@ -13,15 +13,15 @@ struct GraphInitConfig {
     bool      weighted = false;
     glm::vec2 minPos;
     glm::vec2 maxPos;
-    int       V = 1;
-    int       E = 0;
+    int       V = 10;
+    int       E = 5;
 };
 
 struct GraphConfig {
     std::unique_ptr<Graph> ptr;
     bool                   isHidden = false;  //? scale? idk
     struct DrawSettings {
-        float NodeSize_px = 50;  // diameter in pixels
+        float NodeSize_px = 15;  // diameter in pixels
         float EdgeWidth_px = 5;
         float edgeMargin = 0.1f;
         // eventually
@@ -87,6 +87,6 @@ struct Graph {
         return {rand(min.x, max.x), rand(min.y, max.y)};
     }
     Node getRandomNode() {
-        return (Node)std::uniform_int_distribution<int>{0, init_cfg.V}(_rand_engine);
+        return (Node)std::uniform_int_distribution<int>{0, init_cfg.V - 1}(_rand_engine);
     }
 };
