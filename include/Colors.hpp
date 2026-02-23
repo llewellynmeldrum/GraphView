@@ -1,4 +1,5 @@
 #pragma once
+#include "glm/glm.hpp"
 #include "imgui.h"
 #define COLOR(c) c.r, c.g, c.b, c.a
 struct GLColor {
@@ -8,6 +9,7 @@ struct GLColor {
     GLColor(float grey) : r(grey), g(grey), b(grey), a(1.0f) {}
     GLColor(float grey, float alpha) : r(grey), g(grey), b(grey), a(alpha) {}
     operator ImVec4() const { return ImVec4{r, g, b, a}; }
+    operator glm::vec4() const { return glm::vec4{r, g, b, a}; }
 };
 
 static inline const GLColor WHITE = {1.0f};

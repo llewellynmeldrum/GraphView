@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Colors.hpp"
 #include "Vectors.hpp"
 #include <cstddef>
 #include <glm/glm.hpp>
@@ -11,23 +12,23 @@ struct Graph;
 struct GraphInitConfig {
     bool      noSelfEdges = true;
     bool      weighted = false;
-    glm::vec2 minPos;
-    glm::vec2 maxPos;
-    int       V = 10;
-    int       E = 5;
+    glm::vec2 xBounds = glm::vec2{-1000.0f, 1000.0f};
+    glm::vec2 yBounds = glm::vec2{-1000.0f, 1000.0f};
+    int       V = 1000;
+    int       E = 1000;
 };
 
 struct GraphConfig {
     std::unique_ptr<Graph> ptr;
     bool                   isHidden = false;  //? scale? idk
     struct DrawSettings {
-        float NodeSize_px = 15;  // diameter in pixels
-        float EdgeWidth_px = 5;
-        float edgeMargin = 0.1f;
-        // eventually
-        // float taperStart_px = 10;
-        // float taperEnd_px = 2;
-
+        float     nodeSizeWorld = 3.0f;
+        glm::vec4 baseNodeColor = WHITE;
+        glm::vec4 edgeColor = {1, 1, 1, 1};
+        float     edgeTaperOutgoing = 0.3;
+        float     edgeTaperIncoming = 0.3;
+        bool      enableEdgeTapering = true;
+        bool      showBounds = false;
     } draw;
 };
 struct Graph {
@@ -39,8 +40,9 @@ struct Graph {
     GraphInitConfig init_cfg;
 
     std::vector<std::vector<Node>> adjList;
-    std::vector<glm::vec2>         nodePositions;  // euclidean position of nodes.
-    std::vector<glm::vec4>         nodeColors;     // euclidean position of nodes.
+    std::vector<glm::vec2>         nodePositions;  // (world positions)
+    std::vector<glm::vec4>         nodeColors;
+    std::vector<bool>              isNodeColored;
     std::vector<Edge>              edges;
 
     Graph() {};

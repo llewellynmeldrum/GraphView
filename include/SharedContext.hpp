@@ -15,43 +15,36 @@ using std::println;
 
 struct GLFWwindow;
 
-#define IG_PRINT(s, ...)                                                                           \
-    do {                                                                                           \
-        string s = std::format(s, __VA_ARGS__);                                                    \
-        IMGUI_DEBUG_LOG("%s\n", s.c_str());                                                        \
-    } while (0)
-
 struct Application;
 struct SharedContext {
     struct Camera {
-        glm::vec2              origin = {0.0f, 0.0f};
-        glm::vec2              pos = {0.0f, 0.0f};
-        float                  zoom = 1.0f;
-        static constexpr float w2sFactor = 1.0f;  // x units per pixel
-        float                  aspectRatio = 1.0f;
-        // use glm::vec2 GLFWHandler::getGLFWWindowSize(); to update
+        static constexpr float w2sFactor = 2.0f;  // how many world units per pixel
+
+        float aspectRatio = 1.0f;
+
+        glm::vec2 origin = {0.0f, 0.0f};
+        glm::vec2 smoothPos = {0.0f, 0.0f};
+        glm::vec2 truePos = {0.0f, 0.0f};
+        float     zoom = 0.4f, MAX_ZOOM = 15.0f, MIN_ZOOM = 0.05f;
+        float     smoothFactor = 0.4f;
     } cam;
-    // for messing with opengl
-    Application* app;
+    Application* app;  // So submodules can call app->exit() if they need to
     SharedContext(Application* _app) : app(_app) {}
-    struct Temporary {
-        std::array<float, 12> NDC_quad = {-1.f, -1.f, 1.f, -1.f, 1.f,  1.f,
-                                          -1.f, -1.f, 1.f, 1.f,  -1.f, 1.f};
 
-        glm::vec2 centerWorld{0.0f, 0.0f};
-        glm::vec4 uCol{0.2f, 0.8f, 1.0f, 1.0f};
-        float     radWorld{35.0f};
-    } temp;
+    // shared setup between imgui and glfw
+    float       dpiScaling;
+    const char* p_glslVersion{nullptr};
 
-    float          mainScale;
+    bool           ignoreMouseInput = false;
+    bool           ignoreKeyboardInput = false;
     bool           uiRequestsGraphGeneration = false;
     const GLColor& bgColor = DDARKGREY;
     GLFWwindow*    p_viewport{nullptr};
-    const char*    p_glslVersion{nullptr};
 
     bool            graphExists = false;
     GraphInitConfig graphInitConfig{};
     GraphConfig     graphConfig{};
+
     struct AppConfig {
         static constexpr bool ENABLE_VSYNC = true;
         bool                  PRINT_KEY_EVENTS = false;

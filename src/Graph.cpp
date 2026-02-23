@@ -8,16 +8,17 @@ void Graph::init(GraphInitConfig _init_cfg) {
     const int& E = init_cfg.E;
     adjList = std::vector<std::vector<Node>>(V);
     nodePositions = std::vector<glm::vec2>(V);
+    isNodeColored = std::vector<bool>(V, false);
     nodeColors = std::vector<glm::vec4>(V, {1.0f, 1.0f, 1.0f, 1.0f});
     println("V:{}, E:{}", V, E);
 
-    auto min = init_cfg.minPos;
-    auto max = init_cfg.maxPos;
+    glm::vec2 min = {init_cfg.xBounds.x, init_cfg.yBounds.x};
+    glm::vec2 max = {init_cfg.xBounds.y, init_cfg.yBounds.y};
     println("Generating graph between bounds=[{},{}] and [{},{}]", min.x, min.y, max.x, max.y);
 
     // 1. Set a random position for each node
     for (Node u = 0; u < V; u++) {
-        this->nodePositions[u] = randVec2(init_cfg.minPos, init_cfg.maxPos);
+        this->nodePositions[u] = randVec2(min, max);
     }
     if (E > 2 * V) {
         println("Warning! EdgeCount is greater than 2*NodeCount. This may slow down "

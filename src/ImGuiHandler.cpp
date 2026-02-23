@@ -10,16 +10,42 @@ Vec2 IGH::drawGraphVisualSettings(WindowConfig win) {
     IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
     IG::Begin("Graph Visuals", &win.shown, WindowFlags::DYNAMIC);
 
-    // ImGui::InputInt(const char* label, int* v, int step = 1, int step_fast = 100,
-    // ImGuiInputTextFlags flags = 0);
-    IG::SliderFloat("Node Radius (px)", &(shared.graphConfig.draw.NodeSize_px), 0.0f, 100.0f);
-    IGH::setTooltipWrap("Node radius in pixels.");
+    auto& draw = shared.graphConfig.draw;
 
-    IG::SliderFloat2("Camera pos", ADDR(shared.cam.pos), -1000.0f, 1000.0f);
-    IGH::setTooltipWrap("Dingleberry.");
+    if (IG::TreeNodeEx("Node Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        IG::SliderFloat("Node Radius (px)", &(draw.nodeSizeWorld), 0.0f, 100.0f);
+        IG::ColorEdit4("Node Color", glm::value_ptr(draw.baseNodeColor));
+        IG::TreePop();
+    }
 
-    IG::SliderFloat("Camera zoom", &(shared.cam.zoom), 0.0f, 10.0f);
-    IGH::setTooltipWrap("Dingleberry.");
+    if (IG::TreeNodeEx("Edge Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        IG::Checkbox("Edge tapering", &draw.enableEdgeTapering);
+
+        IG::SliderFloat("Incoming edge width", &(draw.edgeTaperIncoming), 0.0f,
+                        draw.nodeSizeWorld * 2.0);
+        if (!draw.enableEdgeTapering) {
+            IG::BeginDisabled();
+            draw.edgeTaperOutgoing = draw.edgeTaperIncoming;
+        }
+        IG::SliderFloat("Outgoing edge width", &(draw.edgeTaperOutgoing), 0.0f,
+                        draw.nodeSizeWorld * 2.0);
+
+        if (!draw.enableEdgeTapering) {
+            IG::EndDisabled();
+        }
+        IG::ColorEdit4("Edge Color", glm::value_ptr(draw.edgeColor));
+        IG::Checkbox("Show bounds", &draw.showBounds);
+        IG::TreePop();
+    }
+
+    if (IG::TreeNodeEx("Camera Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        IG::SliderFloat2("Smoothed pos", ADDR(shared.cam.smoothPos), -1000.0f, 1000.0f);
+        IG::SliderFloat2("True position", ADDR(shared.cam.truePos), -1000.0f, 1000.0f);
+        IG::SliderFloat("Camera smoothing", &shared.cam.smoothFactor, 0.0f, 2.0f);
+        IG::SliderFloat("Camera zoom", &(shared.cam.zoom), shared.cam.MIN_ZOOM,
+                        shared.cam.MAX_ZOOM);
+        IG::TreePop();
+    }
 
     IG::End();
     return {win.pos.x, win.pos.y + win.pos.y};
@@ -38,8 +64,12 @@ Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
     IG::InputInt("E", &shared.graphInitConfig.E);
     IGH::setTooltipWrap("Number of edges in the graph.");
 
-    ImGui::Button("Generate Graph");
-    if (ImGui::IsItemActive()) {
+    if (IG::Button("Generate Graph")) {
+        shared.uiRequestsGraphGeneration = true;
+    }
+    IG::SameLine();
+    IG::Button("Generate Graph (hold)");
+    if (IG::IsItemActive()) {
         shared.uiRequestsGraphGeneration = true;
     }
 
@@ -48,6 +78,10 @@ Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
     }
 
     {
+        IG::SliderFloat2("Screen Bounds (x)", glm::value_ptr(shared.graphInitConfig.xBounds),
+                         -1000.0f, 1000.0f);
+        IG::SliderFloat2("Screen Bounds (y)", glm::value_ptr(shared.graphInitConfig.yBounds),
+                         -1000.0f, 1000.0f);
         if (ImGui::Button("Print adjlist")) {
             shared.graphConfig.ptr->debug_print_adj();
         }

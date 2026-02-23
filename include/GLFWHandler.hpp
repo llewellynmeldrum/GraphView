@@ -26,7 +26,24 @@ struct GLFWHandler {
     void init();
 
  private:
-    glm::mat4 makeViewProjection(int width, int height, float zoomHalfHeight);
+    void   applyCameraSmoothing();
+    double tprev = -1;
+    struct Input {
+        bool      dragging = false;
+        glm::vec2 grabScreen{0, 0};
+        glm::vec2 grabWorld{0, 0};
+    } input;
+    glm::vec2 getMousePosScreen();
+    glm::vec2 getMousePosWorld();
+    glm::vec2 screenToWorld(glm::vec2 scr2);
+    void      drawGraphBounds(float thick, glm::vec4 color);
+    // = how many world units fits in the height of the screen at zoom=1.0
+    static constexpr float DEFAULT_ZOOM_AMOUNT = 500.0f;
+
+    int       scrWidth_px;
+    int       scrHeight_px;
+    void      drawGrid(int scrWidth, int scrHeight);
+    glm::mat4 makeViewProjection(glm::vec2 pos, float zoomHalfHeight);
     glm::vec2 getGLFWWindowSize();
 
     void keyPressed(int key, int scancode, int action, int mods);

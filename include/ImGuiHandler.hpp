@@ -25,8 +25,8 @@ struct ImGuiHandler {
 
         IG::StyleColorsDark();
         ImGuiStyle& style = IG::GetStyle();
-        style.ScaleAllSizes(shared.mainScale);
-        style.FontScaleDpi = shared.mainScale;
+        style.ScaleAllSizes(shared.dpiScaling);
+        style.FontScaleDpi = shared.dpiScaling;
 
         ImGui_ImplGlfw_InitForOpenGL(shared.p_viewport, true);
         ImGui_ImplOpenGL3_Init(shared.p_glslVersion);
