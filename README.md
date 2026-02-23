@@ -40,3 +40,8 @@ MacOS:
 - GLM: OpenGL graphics library
 
 
+# Credits 
+- https://github.com/mhalber/Lines/
+- (Holten, Danny; van Wijk, Jarke J. (2009), "A user study on visualizing directed edges in graphs")[https://web.archive.org/web/20111106004500/http://www.win.tue.nl/~dholten/papers/directed_edges_chi.pdf]
+
+
