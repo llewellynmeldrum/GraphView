@@ -17,6 +17,8 @@ Application app;
 
 int main() {
     app.start();
+
+    app.shared.uiRequestsGraphGeneration = true;
     while (!app.platform.shouldClose()) {
         app.platform.handleInputs();
         app.platform.handleUIUpdates();
