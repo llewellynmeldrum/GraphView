@@ -21,7 +21,6 @@ int main() {
     app.shared.uiRequestsGraphGeneration = true;
     while (!app.platform.shouldClose()) {
         app.platform.handleInputs();
-        app.platform.handleUIUpdates();
         if (app.shared.uiRequestsGraphGeneration) {
             app.generateGraph();
         }

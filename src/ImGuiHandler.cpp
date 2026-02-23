@@ -11,6 +11,18 @@ Vec2 IGH::drawGraphVisualSettings(WindowConfig win) {
     IG::Begin("Graph Visuals", &win.shown, WindowFlags::DYNAMIC);
 
     auto& draw = shared.graphConfig.draw;
+    auto& update = shared.graphConfig.update;
+    if (IG::TreeNodeEx("Graph Updates", ImGuiTreeNodeFlags_DefaultOpen)) {
+        IG::Checkbox("Enable force direction", &update.isForceDirected);
+        if (!update.isForceDirected) {
+            IG::BeginDisabled();
+        }
+        IG::SliderFloat("Current temperature", &update.temp, 0, shared.graphInitConfig.T0);
+        if (!update.isForceDirected) {
+            IG::EndDisabled();
+        }
+        IG::TreePop();
+    }
 
     if (IG::TreeNodeEx("Node Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         IG::SliderFloat("Node Radius (px)", &(draw.nodeSizeWorld), 0.0f, 100.0f);
@@ -51,6 +63,25 @@ Vec2 IGH::drawGraphVisualSettings(WindowConfig win) {
     return {win.pos.x, win.pos.y + win.pos.y};
     // bototm left
 }
+Vec2 IGH::drawPlaybackControlsWindow(WindowConfig win) {
+    IG::SetNextWindowPos(win.pos, ImGuiCond_FirstUseEver);
+    IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
+    IG::Begin("Playback Controls", &win.shown, WindowFlags::DYNAMIC);
+
+    auto& update = shared.graphConfig.update;
+    // clang-format off
+    std::string label = "Pause";
+    if (update.isPaused) label = "Continue";
+    if (IG::Button(label.c_str(),{80,30})){
+        update.isPaused=!update.isPaused;
+    } 
+    IG::SliderFloat("Timescale",&update.timeScale,0.0f,5.0f,"%.3f",ImGuiSliderFlags_Logarithmic);
+    if (update.timeScale==0) update.isPaused=true;
+    if (update.timeScale>0) update.isPaused=false;
+    IG::End();
+    return {win.pos.x, win.pos.y + win.pos.y};
+    // bototm left
+}
 Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
     IG::SetNextWindowPos(win.pos, ImGuiCond_FirstUseEver);
     IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
@@ -72,6 +103,8 @@ Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
     if (IG::IsItemActive()) {
         shared.uiRequestsGraphGeneration = true;
     }
+    IG::SliderFloat("T0", &shared.graphInitConfig.T0, 0, 1000.0f);
+    IG::SliderFloat("T1", &shared.graphInitConfig.T1, 0, 10.0f);
 
     if (!shared.graphExists) {
         IG::BeginDisabled();
@@ -117,6 +150,7 @@ void IGH::drawUI() {
         auto prev = drawPerformanceWindow({{0.5f, 0.1f}, {0, 0}, io});
         drawGraphGenerationWindow({{0.5f, 0.1f}, prev, io});
         drawGraphVisualSettings({{0.5, 0.1}, prev, io});
+        drawPlaybackControlsWindow({{0.5,0.9},prev,io});
     }
     IG::Render();  // calls IG::endFrame()
 }

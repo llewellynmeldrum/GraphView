@@ -17,7 +17,7 @@ struct GLFWHandler {
     //    GLFWHandler(auto& _shared) : shared(_shared){}
 
     void handleInputs();
-    void handleUIUpdates();
+    void updateGraph();
     void render();
     bool shouldClose();
     void destroy();
@@ -26,7 +26,7 @@ struct GLFWHandler {
     void init();
 
  private:
-    void   applyCameraSmoothing();
+    void   applyCameraSmoothing(double dT);
     double tprev = -1;
     struct Input {
         bool      dragging = false;

@@ -25,7 +25,7 @@ struct SharedContext {
         glm::vec2 origin = {0.0f, 0.0f};
         glm::vec2 smoothPos = {0.0f, 0.0f};
         glm::vec2 truePos = {0.0f, 0.0f};
-        float     zoom = 0.4f, MAX_ZOOM = 15.0f, MIN_ZOOM = 0.05f;
+        float     zoom = 1.0f, MAX_ZOOM = 15.0f, MIN_ZOOM = 0.05f;
         float     smoothFactor = 0.4f;
     } cam;
     Application* app;  // So submodules can call app->exit() if they need to

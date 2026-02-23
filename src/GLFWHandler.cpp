@@ -227,11 +227,7 @@ glm::vec2 lerp2(glm::vec2 a, glm::vec2 b, double alpha) {
     a.y = std::lerp(a.y, b.y, alpha);
     return a;
 }
-void GLFWHandler::applyCameraSmoothing() {
-    double tnow = glfwGetTime();
-    double dT = tnow - tprev;
-    tprev = tnow;
-
+void GLFWHandler::applyCameraSmoothing(double dT) {
     // yo i got no clue what this line does like not even the slightest
     double alpha = 1.0f - std::exp(-(10.0f / shared.cam.smoothFactor) * dT);
 
@@ -239,15 +235,16 @@ void GLFWHandler::applyCameraSmoothing() {
 }
 void GLFWHandler::handleInputs() {
     if (tprev == -1) tprev = glfwGetTime();
-    applyCameraSmoothing();
+    double tnow = glfwGetTime();
+    double dT = tnow - tprev;
+    tprev = tnow;
+    applyCameraSmoothing(dT);
+    if (shared.graphExists) shared.graphConfig.ptr->update(dT);
 
     auto& io = IG::GetIO();
     shared.ignoreMouseInput = io.WantCaptureMouse;
     shared.ignoreKeyboardInput = io.WantCaptureKeyboard;
     glfwPollEvents();
-}
-void GLFWHandler::handleUIUpdates() {
-    if (shared.uiRequestsGraphGeneration) {}
 }
 
 bool GLFWHandler::shouldClose() {
@@ -340,16 +337,34 @@ void GLFWHandler::mouseEnteredOSWindow() {
 void GLFWHandler::mouseLeftOSWindow() {
 }
 void GLFWHandler::keyPressed(int key, int scancode, int action, int mods) {
+    auto& update = shared.graphConfig.update;
     if (shared.cfg.PRINT_KEY_EVENTS)
         println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
-    switch (key) {
-    case 'C':
-        if (mods == GLFW_MOD_CONTROL) {
-            shared.app->exit(EXIT_SUCCESS);
-        }
-        break;
+    if (action == GLFW_PRESS) {
+        switch (key) {
+        case 'C':
+            if (mods == GLFW_MOD_CONTROL) {
+                shared.app->exit(EXIT_SUCCESS);
+            }
+            break;
+        case ' ':
+            {
+                if (update.isPaused) {
+                    update.isPaused = false;
+                    update.timeScale = 1.0f;
+                } else {
+                    update.isPaused = true;
+                    update.timeScale = 0.0f;
+                }
+                break;
+            }
+        case 'R': shared.uiRequestsGraphGeneration = true; break;
+        case 'F':
+            shared.graphConfig.update.isForceDirected = !shared.graphConfig.update.isForceDirected;
+            break;
 
-    default: break;
+        default: break;
+        }
     }
 }
 void GLFWHandler::OSWindowResized(int width, int height) {

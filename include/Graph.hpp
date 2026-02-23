@@ -10,12 +10,14 @@
 
 struct Graph;
 struct GraphInitConfig {
+    float     T0 = 100.0f;
+    float     T1 = 10.0f;
     bool      noSelfEdges = true;
     bool      weighted = false;
     glm::vec2 xBounds = glm::vec2{-1000.0f, 1000.0f};
     glm::vec2 yBounds = glm::vec2{-1000.0f, 1000.0f};
-    int       V = 1000;
-    int       E = 1000;
+    int       V = 100;
+    int       E = 200;
 };
 
 struct GraphConfig {
@@ -30,22 +32,35 @@ struct GraphConfig {
         bool      enableEdgeTapering = true;
         bool      showBounds = false;
     } draw;
+
+    struct UpdateSettings {
+        bool  isForceDirected = true;
+        float timeScale = 1.0f;
+        bool  isPaused = false;
+        float temp;
+    } update;
 };
 struct Graph {
+    glm::vec2 clampToBounds(glm::vec2 v);
+    float     averageEdgeLength{};
     using Node = int;
+    void update(double dT);
     struct Edge {
         Node  u{0}, v{0};
         float weight = 1.0;
     };
     GraphInitConfig init_cfg;
+    GraphConfig&    cfg;
 
     std::vector<std::vector<Node>> adjList;
-    std::vector<glm::vec2>         nodePositions;  // (world positions)
+    std::vector<glm::vec2>         nodePositions;     // (world positions)
+    std::vector<glm::vec2>         nodeVelocity;      // (world positions)
+    std::vector<glm::vec2>         nodeAcceleration;  // (world positions)
     std::vector<glm::vec4>         nodeColors;
     std::vector<bool>              isNodeColored;
     std::vector<Edge>              edges;
 
-    Graph() {};
+    Graph(GraphConfig& _cfg) : cfg(_cfg) {};
 
     void init(GraphInitConfig init_cfg);
     void reset(auto init_cfg) { init(init_cfg); }

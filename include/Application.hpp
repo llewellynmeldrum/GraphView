@@ -11,7 +11,7 @@ struct Application {
 
     void generateGraph() {
         if (!shared.graphExists) {
-            shared.graphConfig.ptr = std::make_unique<Graph>();
+            shared.graphConfig.ptr = std::make_unique<Graph>(shared.graphConfig);
             shared.graphConfig.ptr->init(shared.graphInitConfig);
         } else {
             shared.graphConfig.ptr->reset(shared.graphInitConfig);
