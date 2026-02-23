@@ -1,8 +1,16 @@
 # GraphView
-For simulating and viewing graph algorithms.
+For simulating and viewing graph algorithms. Right now it sorta just renders graphs. But it looks cool:
+<br>
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/b8ee95b3-175c-4579-bb69-4c4a7a5958da" />
+<br>
+
+## Features
+- idk nice imgui gui
+- Made with legibility/readability in mind
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/241c6b22-798c-4412-9f76-b1e844cd517e" />
 
 TODO:
-- Implement graph rendering (just have some UI and a circle atm)
+- ~~Implement graph rendering~~
 - Implement a few algorithms with playback controls of some kind
 - bfs first,
 - then dijkstras
@@ -34,10 +42,10 @@ MacOS:
 
 # Libraries used
 - GLFW, for windowing and handling input
-- ImGui: for UI. Also used to understand basics of GLFW.
-- OpenGL, used as part of the ImGui backend, and used directly for rendering of the graphs
-- glad: simplifies making certain OpenGL calls and allows for better usage of extensions
-- GLM: OpenGL graphics library
+- ImGui, for UI
+- OpenGL, used as part of the ImGui backend, and used directly for drawing lines and circles
+  - glad: simplifies making certain OpenGL calls and allows for better usage of extensions
+  - GLM: OpenGL math library
 
 
 # Credits 
