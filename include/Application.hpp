@@ -3,7 +3,7 @@
 #include "GLFWHandler.hpp"
 #include "ImGuiHandler.hpp"
 struct Application {
-    SharedContext shared{this};
+    SharedContext shared;
     GLFWHandler   platform{shared};
     ImGuiHandler  ui{shared};
 
@@ -11,10 +11,10 @@ struct Application {
 
     void generateGraph() {
         if (!shared.graphExists) {
-            shared.graphConfig.ptr = std::make_unique<Graph>(shared.graphConfig);
+            shared.graphs.ptr = std::make_unique<Graph>(shared);
         }
-        shared.graphInitConfig.T0 = static_cast<int>(shared.graphInitConfig.E);
-        shared.graphConfig.ptr->init(shared.graphInitConfig);
+        shared.graphInitConfig.initialTemperature = static_cast<int>(shared.graphInitConfig.E);
+        shared.graphs.ptr->init(shared.graphInitConfig);
         // configure graph based on the changes made in ui
         //		shared.graphInitConfig.E =
         shared.graphExists = true;

@@ -92,10 +92,10 @@ void GLFWHandler::render() {
         gl.endPass();
         */
     }
-    if (shared.graphExists && !shared.graphConfig.isHidden) {
-        drawGraph(shared.graphConfig.ptr.get());
+    if (shared.graphExists && !shared.graphs.isHidden) {
+        drawGraph(shared.graphs.ptr.get());
     }
-    if (shared.graphConfig.draw.showBounds) {
+    if (shared.graphs.draw.showBounds) {
         drawGraphBounds(5.0f, {1, 0, 0, 0.5});
     }
 
@@ -106,6 +106,31 @@ void GLFWHandler::render() {
 #define xyz(var) var.x, var.y, var.z
 #define xyzw(var) var.x, var.y, var.z, var.w
 
+glm::vec2 GLFWHandler::worldToScreen(glm::vec2 w2) {
+    if (!std::isfinite(w2.x) || !std::isfinite(w2.y)) {
+        printf("worldToScreen: BAD INPUT w2=(%f,%f)\n", w2.x, w2.y);
+        return {NAN, NAN};
+    }
+
+    glm::vec4 clip4 = gl.viewProj * glm::vec4(w2, 0.0f, 1.0f);
+
+    if (!std::isfinite(clip4.x) || !std::isfinite(clip4.y) || !std::isfinite(clip4.w) ||
+        clip4.w == 0.0f) {
+        printf("worldToScreen: BAD CLIP clip=(%f,%f,%f,%f) zoom=%f aspect=%f halfH=%f\n", clip4.x,
+               clip4.y, clip4.z, clip4.w, shared.cam.zoom, shared.cam.aspectRatio,
+               float(DEFAULT_ZOOM_AMOUNT) / shared.cam.zoom);
+        return {NAN, NAN};
+    }
+
+    glm::vec2 ndc2 = glm::vec2(clip4) / clip4.w;
+
+    glm::vec2 out{(ndc2.x * 0.5f + 0.5f) * scrWidth_px, (-ndc2.y * 0.5f + 0.5f) * scrHeight_px};
+
+    if (!std::isfinite(out.x) || !std::isfinite(out.y)) {
+        printf("worldToScreen: BAD OUT ndc=(%f,%f) out=(%f,%f)\n", ndc2.x, ndc2.y, out.x, out.y);
+    }
+    return out;
+}
 glm::vec2 GLFWHandler::screenToWorld(glm::vec2 scr2) {
     // always use the raw_InvViewProj
 
@@ -123,7 +148,7 @@ glm::vec2 GLFWHandler::screenToWorld(glm::vec2 scr2) {
     // 3. convert clip->world ==> worldPos = inverse(viewProj) * clipPos
     auto world4 = gl.raw_invViewProj * clip4;
     auto world3 = glm::vec3{xyz(world4)};
-    world3 / world4.w;
+    world3 /= world4.w;
     // println("s:[{},{}]->w:[{},{}]", scr2.x, scr2.y, world3.x, world3.y);
     return glm::vec2{world3.x, world3.y};
 }
@@ -182,17 +207,16 @@ void GLFWHandler::drawGraphBounds(float thick, glm::vec4 color) {
 
 // clang-format on
 inline void GLFWHandler::drawNode(const Graph* G, Graph::Node u) {
-    const auto& draw = shared.graphConfig.draw;
+    const auto& draw = shared.graphs.draw;
     const auto& pos = G->nodePositions[u];
-    const auto& nodeSize_px = draw.nodeSizeWorld + G->degreeFactor[u];
+    const auto& nodeSize_px = draw.nodeSizeWorld - G->degreeFactor[u] * draw.nodeSizeWorld * 0.1f;
     const auto  isNodeColored = static_cast<bool>(G->isNodeColored[u]);
-    const auto& nodeColor =
-            (isNodeColored) ? G->nodeColors[u] : shared.graphConfig.draw.baseNodeColor;
+    const auto& nodeColor = (isNodeColored) ? G->nodeColors[u] : shared.graphs.draw.baseNodeColor;
     gl.drawCircle(pos, nodeSize_px, nodeColor);
 }
 
 inline void GLFWHandler::drawEdge(const Graph* G, Graph::Edge edge) {
-    const auto& draw = shared.graphConfig.draw;
+    const auto& draw = shared.graphs.draw;
     const auto& upos = G->nodePositions[edge.u];
     const auto& vpos = G->nodePositions[edge.v];
     const auto& uScale = static_cast<float>(draw.edgeTaperOutgoing + G->degreeFactor[edge.u]);
@@ -242,7 +266,7 @@ void GLFWHandler::handleInputs() {
     double dT = tnow - tprev;
     tprev = tnow;
     applyCameraSmoothing(dT);
-    if (shared.graphExists) shared.graphConfig.ptr->update(dT);
+    if (shared.graphExists) shared.graphs.ptr->update(dT);
 
     auto& io = IG::GetIO();
     shared.ignoreMouseInput = io.WantCaptureMouse;
@@ -340,14 +364,14 @@ void GLFWHandler::mouseEnteredOSWindow() {
 void GLFWHandler::mouseLeftOSWindow() {
 }
 void GLFWHandler::keyPressed(int key, int scancode, int action, int mods) {
-    auto& update = shared.graphConfig.update;
+    auto& update = shared.graphs.update;
     if (shared.cfg.PRINT_KEY_EVENTS)
         println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
     if (action == GLFW_PRESS) {
         switch (key) {
         case 'C':
             if (mods == GLFW_MOD_CONTROL) {
-                shared.app->exit(EXIT_SUCCESS);
+                exit(EXIT_SUCCESS);
             }
             break;
         case ' ':
@@ -363,7 +387,7 @@ void GLFWHandler::keyPressed(int key, int scancode, int action, int mods) {
             }
         case 'R': shared.uiRequestsGraphGeneration = true; break;
         case 'F':
-            shared.graphConfig.update.isForceDirected = !shared.graphConfig.update.isForceDirected;
+            shared.graphs.update.isForceDirected = !shared.graphs.update.isForceDirected;
             break;
 
         default: break;

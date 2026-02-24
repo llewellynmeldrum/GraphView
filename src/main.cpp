@@ -33,6 +33,7 @@ int main() {
 void Application::start() {
     platform.init();
     ui.init();
+    shared.renderer = std::make_unique<GLFWHandler>(platform);
 }
 void Application::destroy() {
     platform.destroy();

@@ -4,6 +4,7 @@
 #include <GLES2/gl2.h>
 #endif
 #include "GLContext.hpp"
+#include "Graph.hpp"
 #include "SharedContext.hpp"
 #include "imgui_impl_glfw.h"
 #include <GLFW/glfw3.h>
@@ -13,7 +14,7 @@ struct GLFWHandler {
     GLContext      gl;  // opengl context
     const char*    getGLSLVersion();
 
-    GLFWHandler(auto& _shared) : shared(_shared), gl(_shared) {}
+    GLFWHandler(SharedContext& _shared) : shared(_shared), gl(_shared) {}
     //    GLFWHandler(auto& _shared) : shared(_shared){}
 
     void handleInputs();
@@ -24,6 +25,8 @@ struct GLFWHandler {
 
     // init glfw, create the OS window,
     void init();
+
+    glm::vec2 worldToScreen(glm::vec2 w2);
 
  private:
     void   applyCameraSmoothing(double dT);

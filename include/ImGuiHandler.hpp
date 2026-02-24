@@ -51,7 +51,8 @@ struct ImGuiHandler {
     Vec2 drawGraphGenerationWindow(WindowConfig win);
     Vec2 drawGraphVisualSettings(WindowConfig win);
     Vec2 drawPlaybackControlsWindow(WindowConfig win);
-
+    Vec2 drawAlgorithmRunner(WindowConfig win);
+    void drawOverlay();
     void imguiTextWithTooltip(const char* text, const char* tooltip);
     void setTooltipWrap(const char* tooltip);
 

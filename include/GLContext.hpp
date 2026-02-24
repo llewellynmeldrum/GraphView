@@ -11,7 +11,7 @@ struct GLContext {
     // try to make the public interface as narrow as possible
     // TODO: Remove! this is just for testing
     SharedContext& shared;
-    GLContext(auto& _s) : shared(_s) {}
+    GLContext(SharedContext& _s) : shared(_s) {}
 
     int  init();
     void drawCircle(glm::vec2 centreWorld, float radiusWorld, glm::vec4 color);

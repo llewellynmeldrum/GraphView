@@ -1,14 +1,18 @@
 #include "Graph.hpp"
+#include "GLFWHandler.hpp"
 #include "SharedContext.hpp"
 #include <algorithm>
+#include <imgui.h>
 
-void Graph::init(GraphInitConfig _init_cfg) {
+void Graph::init(SharedContext::GraphInitConfig _init_cfg) {
     this->init_cfg = _init_cfg;
 
     const int& V = init_cfg.V;
     const int& E = init_cfg.E;
     adjList = std::vector<std::vector<Node>>(V);
     nodePositions = std::vector<glm::vec2>(V);
+    screenPos = std::vector<glm::vec2>(V);
+    id = std::vector<std::string>(V, "");
     degree = std::vector<int>(V);
     degreeFactor = std::vector<float>(V);
     isNodeColored = std::vector<bool>(V, false);
@@ -17,13 +21,14 @@ void Graph::init(GraphInitConfig _init_cfg) {
 
     glm::vec2 min = {init_cfg.xBounds.x, init_cfg.yBounds.x};
     glm::vec2 max = {init_cfg.xBounds.y, init_cfg.yBounds.y};
-    cfg.update.currTemp = _init_cfg.T0;
+    cfg.update.currTemp = _init_cfg.initialTemperature;
 
     println("Generating graph between bounds=[{},{}] and [{},{}]", min.x, min.y, max.x, max.y);
 
     // 1. Set a random position for each node
     for (Node u = 0; u < V; u++) {
-        this->nodePositions[u] = randVec2(min, max);
+        nodePositions[u] = randVec2(min, max);
+        id[u] = std::format("{:02x}", u);
     }
     if (E > 2 * V) {
         println("Warning! EdgeCount is greater than 2*NodeCount. This may slow down "
@@ -65,7 +70,7 @@ void Graph::init(GraphInitConfig _init_cfg) {
         }
     }
     for (Node u = 0; u < V; u++) {
-        degreeFactor[u] = log(static_cast<float>(degree[u]));
+        degreeFactor[u] = static_cast<float>(1 - degree[u]);
     }
 }
 static inline glm::vec2 clampMag(glm::vec2 v, float maxLen) {
@@ -92,7 +97,7 @@ void Graph::update(double frame_dT) {
     using vec2 = glm::vec2;
 
     if (!cfg.update.isForceDirected || cfg.update.isPaused) return;
-    if (cfg.update.currTemp <= init_cfg.T1) {
+    if (cfg.update.currTemp <= init_cfg.restingTemperature) {
         return;
     }
 
@@ -147,6 +152,11 @@ void Graph::update(double frame_dT) {
             }
             clampToGraphBoundaries(pos[u]);
         }
+    }
+    for (Node u = 0; u < V; u++) {
+        screenPos[u] = shared.renderer->worldToScreen(nodePositions[u]);
+        println("{},{}->{},{}", nodePositions[u].x, nodePositions[u].y, screenPos[u].x,
+                screenPos[u].y);
     }
     cfg.update.currTemp *= coolingFactor;
 }
