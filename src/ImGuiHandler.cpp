@@ -17,7 +17,8 @@ Vec2 IGH::drawGraphVisualSettings(WindowConfig win) {
         if (!update.isForceDirected) {
             IG::BeginDisabled();
         }
-        IG::SliderFloat("Current temperature", &update.temp, 0, shared.graphInitConfig.T0);
+        IG::SliderFloat("Current temperature", &update.currTemp, shared.graphInitConfig.T1,
+                        shared.graphInitConfig.T0);
         if (!update.isForceDirected) {
             IG::EndDisabled();
         }
@@ -87,12 +88,11 @@ Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
     IG::SetNextWindowSize(win.size *= IG::GetMainViewport()->Size, ImGuiCond_FirstUseEver);
     IG::Begin("Graph Generation", &win.shown, WindowFlags::DYNAMIC);
 
-    // ImGui::InputInt(const char* label, int* v, int step = 1, int step_fast = 100,
-    // ImGuiInputTextFlags flags = 0);
-    IG::InputInt("V", &(shared.graphInitConfig.V));
+    auto& initConfig = shared.graphInitConfig;
+    IG::InputInt("V", &(initConfig.V));
     IGH::setTooltipWrap("Number of vertices (nodes) in the graph.");
 
-    IG::InputInt("E", &shared.graphInitConfig.E);
+    IG::InputInt("E", &initConfig.E);
     IGH::setTooltipWrap("Number of edges in the graph.");
 
     if (IG::Button("Generate Graph")) {
@@ -103,17 +103,21 @@ Vec2 IGH::drawGraphGenerationWindow(WindowConfig win) {
     if (IG::IsItemActive()) {
         shared.uiRequestsGraphGeneration = true;
     }
-    IG::SliderFloat("T0", &shared.graphInitConfig.T0, 0, 1000.0f);
-    IG::SliderFloat("T1", &shared.graphInitConfig.T1, 0, 10.0f);
+    IG::SliderFloat("Initial Temp", &initConfig.T0, 0, 1000.0f);
+    IG::SliderFloat("Resting Temp", &initConfig.T1, 0, 10.0f);
+    IG::SliderFloat("Attraction Factor", &initConfig.attractionFactor, 0, 10.0f);
+    IG::SliderFloat("Repulsion Factor", &initConfig.repulsionFactor, 0, 10.0f);
+    IG::SliderFloat("Cooling Factor", &initConfig.coolingFactor, 0, 10.0f);
+    IG::SliderInt("Substeps per cooling step", &initConfig.substeps, 1, 10);
 
     if (!shared.graphExists) {
         IG::BeginDisabled();
     }
 
     {
-        IG::SliderFloat2("Screen Bounds (x)", glm::value_ptr(shared.graphInitConfig.xBounds),
+        IG::SliderFloat2("Screen Bounds (x)", glm::value_ptr(initConfig.xBounds),
                          -1000.0f, 1000.0f);
-        IG::SliderFloat2("Screen Bounds (y)", glm::value_ptr(shared.graphInitConfig.yBounds),
+        IG::SliderFloat2("Screen Bounds (y)", glm::value_ptr(initConfig.yBounds),
                          -1000.0f, 1000.0f);
         if (ImGui::Button("Print adjlist")) {
             shared.graphConfig.ptr->debug_print_adj();

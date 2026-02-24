@@ -182,8 +182,9 @@ void GLFWHandler::drawGraphBounds(float thick, glm::vec4 color) {
 
 // clang-format on
 inline void GLFWHandler::drawNode(const Graph* G, Graph::Node u) {
+    const auto& draw = shared.graphConfig.draw;
     const auto& pos = G->nodePositions[u];
-    const auto& nodeSize_px = shared.graphConfig.draw.nodeSizeWorld;
+    const auto& nodeSize_px = draw.nodeSizeWorld + G->degreeFactor[u];
     const auto  isNodeColored = static_cast<bool>(G->isNodeColored[u]);
     const auto& nodeColor =
             (isNodeColored) ? G->nodeColors[u] : shared.graphConfig.draw.baseNodeColor;
@@ -191,11 +192,13 @@ inline void GLFWHandler::drawNode(const Graph* G, Graph::Node u) {
 }
 
 inline void GLFWHandler::drawEdge(const Graph* G, Graph::Edge edge) {
+    const auto& draw = shared.graphConfig.draw;
     const auto& upos = G->nodePositions[edge.u];
     const auto& vpos = G->nodePositions[edge.v];
-    gl.drawTaperedLine(upos, vpos, shared.graphConfig.draw.edgeTaperIncoming,
-                       shared.graphConfig.draw.edgeTaperOutgoing,
-                       shared.graphConfig.draw.edgeColor);
+    const auto& uScale = static_cast<float>(draw.edgeTaperOutgoing + G->degreeFactor[edge.u]);
+    const auto& vScale = static_cast<float>(draw.edgeTaperIncoming);  //* G->degreeFactor[edge.v]);
+
+    gl.drawTaperedLine(upos, vpos, uScale, vScale, draw.edgeColor);
 }
 void GLFWHandler::drawGraph(const Graph* G) {
     gl.beginLinesPass();

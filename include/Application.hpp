@@ -12,10 +12,9 @@ struct Application {
     void generateGraph() {
         if (!shared.graphExists) {
             shared.graphConfig.ptr = std::make_unique<Graph>(shared.graphConfig);
-            shared.graphConfig.ptr->init(shared.graphInitConfig);
-        } else {
-            shared.graphConfig.ptr->reset(shared.graphInitConfig);
         }
+        shared.graphInitConfig.T0 = static_cast<int>(shared.graphInitConfig.E);
+        shared.graphConfig.ptr->init(shared.graphInitConfig);
         // configure graph based on the changes made in ui
         //		shared.graphInitConfig.E =
         shared.graphExists = true;
