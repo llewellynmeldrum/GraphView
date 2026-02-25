@@ -1,6 +1,7 @@
 #include "Graph.hpp"
 #include "GLFWHandler.hpp"
 #include "SharedContext.hpp"
+#include "glm_wrapper.hpp"
 #include <algorithm>
 #include <imgui.h>
 
@@ -10,24 +11,24 @@ void Graph::init(SharedContext::GraphInitConfig _init_cfg) {
     const int& V = init_cfg.V;
     const int& E = init_cfg.E;
     adjList = std::vector<std::vector<Node>>(V);
-    nodePositions = std::vector<glm::vec2>(V);
-    screenPos = std::vector<glm::vec2>(V);
+    worldPos = std::vector<vec2>(V);
+    screenPos = std::vector<vec2>(V);
     id = std::vector<std::string>(V, "");
     degree = std::vector<int>(V);
     degreeFactor = std::vector<float>(V);
     isNodeColored = std::vector<bool>(V, false);
-    nodeColors = std::vector<glm::vec4>(V, {1.0f, 1.0f, 1.0f, 1.0f});
+    nodeColor = std::vector<vec4>(V, {1.0f, 1.0f, 1.0f, 1.0f});
     println("V:{}, E:{}", V, E);
 
-    glm::vec2 min = {init_cfg.xBounds.x, init_cfg.yBounds.x};
-    glm::vec2 max = {init_cfg.xBounds.y, init_cfg.yBounds.y};
+    vec2 min = {init_cfg.xBounds.x, init_cfg.yBounds.x};
+    vec2 max = {init_cfg.xBounds.y, init_cfg.yBounds.y};
     cfg.update.currTemp = _init_cfg.initialTemperature;
 
     println("Generating graph between bounds=[{},{}] and [{},{}]", min.x, min.y, max.x, max.y);
 
     // 1. Set a random position for each node
     for (Node u = 0; u < V; u++) {
-        nodePositions[u] = randVec2(min, max);
+        worldPos[u] = randVec2(min, max);
         id[u] = std::format("{:02x}", u);
     }
     if (E > 2 * V) {
@@ -73,8 +74,8 @@ void Graph::init(SharedContext::GraphInitConfig _init_cfg) {
         degreeFactor[u] = static_cast<float>(1 - degree[u]);
     }
 }
-static inline glm::vec2 clampMag(glm::vec2 v, float maxLen) {
-    float len2 = glm::dot(v, v);
+static inline vec2 clampMag(vec2 v, float maxLen) {
+    float len2 = dot(v, v);
     if (len2 > maxLen * maxLen) {
         float invLen = 1.0f / sqrtf(len2);
         return v * (maxLen * invLen);
@@ -86,16 +87,14 @@ constexpr float eps = 0.00001f;
 
 #define sq(x) static_cast<float>(pow(x, 2))
 
-inline float boundedLengthSquared(const glm::vec2& v, float min = 0.00001f) {
-    return glm::max(sq(v.x) + sq(v.y), min);
+inline float boundedLengthSquared(const vec2& v, float min = 0.00001f) {
+    return fmax(sq(v.x) + sq(v.y), min);
 }
-inline float boundedLength(const glm::vec2& v, float min = 0.00001f) {
-    return glm::max(sqrt(sq(v.x) + sq(v.y)), min);
+inline float boundedLength(const vec2& v, float min = 0.00001f) {
+    return fmax(sqrt(sq(v.x) + sq(v.y)), min);
 }
 
-void Graph::update(double frame_dT) {
-    using vec2 = glm::vec2;
-
+void Graph::updateGraph(double frame_dT) {
     if (!cfg.update.isForceDirected || cfg.update.isPaused) return;
     if (cfg.update.currTemp <= init_cfg.restingTemperature) {
         return;
@@ -107,7 +106,7 @@ void Graph::update(double frame_dT) {
     const auto& repulsionFactor = init_cfg.repulsionFactor;
     const auto& substeps = init_cfg.substeps;
     const auto& coolingFactor = init_cfg.coolingFactor;
-    auto&       pos = nodePositions;
+    auto&       pos = worldPos;
 
     std::vector<vec2> displacement(init_cfg.V);
 
@@ -143,7 +142,7 @@ void Graph::update(double frame_dT) {
             }
         }
         for (Node u = 0; u < V; u++) {
-            float mag = glm::length(displacement[u]);
+            float mag = length(displacement[u]);
             if (mag > 0) {
                 displacement[u] /= mag;  // normalize
                 mag = std::min(mag, cfg.update.currTemp);
@@ -153,15 +152,10 @@ void Graph::update(double frame_dT) {
             clampToGraphBoundaries(pos[u]);
         }
     }
-    for (Node u = 0; u < V; u++) {
-        screenPos[u] = shared.renderer->worldToScreen(nodePositions[u]);
-        println("{},{}->{},{}", nodePositions[u].x, nodePositions[u].y, screenPos[u].x,
-                screenPos[u].y);
-    }
     cfg.update.currTemp *= coolingFactor;
 }
-void Graph::clampToGraphBoundaries(glm::vec2& v) {
-    using vec2 = glm::vec2;
+void Graph::clampToGraphBoundaries(vec2& v) {
+    using vec2 = vec2;
     if (v.x < init_cfg.xBounds.x) {
         v.x = init_cfg.xBounds.x;
     }

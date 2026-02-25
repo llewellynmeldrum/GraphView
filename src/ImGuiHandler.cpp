@@ -1,13 +1,83 @@
 #include "ImGuiHandler.hpp"
+#include "GLFWHandler.hpp"
 #include "Graph.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 
 #define ADDR(x) glm::value_ptr(x)
+using RunState = SharedContext::GraphConfig::Algorithms::RunState;
+using AlgoID = SharedContext::GraphConfig::Algorithms::AlgoID;
 using IGH = ImGuiHandler;
 ImVec2 glm2iv(glm::vec2 v) {
     return {v.x, v.y};
+}
+struct PulseConfig {
+    float height = 100;
+    float speed = 5;
+    float shiftX = 3.8;
+    float shiftY = 150;
+    bool  enable = true;
+    float alpha(float t) { return height * sin(speed * (t + shiftX)) + shiftY; }
+} pulse;
+
+void IGH::drawNodeIDOverlay(NodeOverlayConfig cfg) {
+    auto*      G = shared.graphs.ptr.get();
+    const auto input = shared.renderer->input;
+    auto       algos = shared.graphs.ptr->cfg.algos;
+    using SelectionType = SharedContext::GraphConfig::Algorithms::SelectionType;
+    IG::PushFont(H1);
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    const auto  size = static_cast<ImVec2>(IG::CalcTextSize(G->id[0].c_str()));
+    for (int node = 0; node < G->init_cfg.V; node++) {
+        const auto& screenPos = G->screenPos[node];
+        const auto& id = G->id[node];
+        ImVec2      pos = glm2iv(screenPos);
+        pos.y -= 20.0f;
+
+        ImVec2 p_min = pos;
+        p_min.x -= size.x / 2.0f;
+        p_min.y -= size.y / 2.0f;
+        ImVec2 p_max = ImVec2(p_min.x + size.x, p_min.y + size.y);
+
+        // clang-format off
+
+        if (IG::IsMouseHoveringRect(p_min, p_max)) {
+            IG::SetMouseCursor(ImGuiMouseCursor_Hand);
+            if (shared.renderer->input.clickedThisFrame) {
+                if (input.clickedThisFrame) {
+                    switch (algos.state) {
+                        case RunState::SelectingAlgorithm:{
+                            // why tf are we in this function then
+                        }
+                        break;
+                        case RunState::SelectingSource:{
+                            algos.sourceNode = node;
+                            algos.state=RunState::SelectingDest;
+                        }
+                        break;
+                    case RunState::SelectingDest: {
+                            algos.destNode = node;
+                            algos.state=RunState::Ready;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        ImU32 color;
+        if (algos.destNode == node || algos.sourceNode == node) {
+            color = cfg.selected_col;
+        } else {
+            color = IM_COL32(cfg.col, cfg.col, cfg.col, pulse.alpha(glfwGetTime()));
+        }
+        draw_list->AddRectFilled(p_min, p_max, color);
+        IG::SetCursorScreenPos(p_min);
+        IG::TextColored({1, 1, 1, 1}, "%s", id.c_str());
+    }
+    println("src:{},dst:{}",algos.sourceNode, algos.destNode);
+    IG::PopFont();
 }
 void IGH::drawOverlay() {
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
@@ -16,13 +86,15 @@ void IGH::drawOverlay() {
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
                          ImGuiWindowFlags_NoInputs);
 
-    const auto* G = shared.graphs.ptr.get();
     // Set cursor to an absolute screen position (e.g., center of the screen)
     // we must use the currently generated graphs V, not the UI selected V to avoid OOB
-    for (int i = 0; i < shared.graphs.ptr->init_cfg.V; i++) {
-        ImVec2 pos = glm2iv(G->screenPos[i]);
-        ImGui::SetCursorScreenPos(pos);
-        ImGui::Text("%s", G->id[i].c_str());
+
+    if (shared.graphs.algos.state == (RunState::SelectingSource || RunState::SelectingDest)) {
+        drawNodeIDOverlay({
+                .blinkAllNodes = true,
+                .col = IM_COL32(150, 150, 150, 255),
+                .selected_col = IM_COL32(255, 255, 255, 255),
+        });
     }
 
     ImGui::End();
@@ -35,12 +107,14 @@ Vec2 IGH::drawAlgorithmRunner(WindowConfig win) {
     auto& draw = shared.graphs.draw;
     auto& update = shared.graphs.update;
     auto& algos = shared.graphs.algos;
-    if (IG::BeginCombo("<- select",
-                       algos.list[algos.selected].c_str()))  // "##my_combo" hides the label
-    {
+    std::string comboText = algos.selectedAlgorithm == AlgoID::NO_ALGO ? "<select algorithm>" : algos.list[algos.selectedAlgorithm];
+    if (IG::BeginCombo("<- select",comboText.c_str())) {
         for (int i = 0; i < algos.list.size(); i++) {
-            const bool is_selected = (algos.selected == i);
-            if (IG::Selectable(algos.list[i].c_str(), is_selected)) algos.selected = i;
+            const bool is_selected = (algos.selectedAlgorithm == i);
+            if (IG::Selectable(algos.list[i].c_str(), is_selected)){
+                algos.selectedAlgorithm = i;
+                algos.state = RunState::SelectingSource;
+            }
 
             // Set the initial focus when opening the combo for keyboard navigation
             if (is_selected) IG::SetItemDefaultFocus();
@@ -195,7 +269,7 @@ void IGH::drawUI() {
     auto& io = IG::GetIO();
     frameTimeSamples.write(io.DeltaTime * 1000.0f);
 
-    if (glfwGetWindowAttrib(shared.p_viewport, GLFW_ICONIFIED) != 0) {
+    if (glfwGetWindowAttrib(shared.OSWindow, GLFW_ICONIFIED) != 0) {
         ImGui_ImplGlfw_Sleep(10);
         return;
     }

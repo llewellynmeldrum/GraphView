@@ -33,7 +33,7 @@ int main() {
 void Application::start() {
     platform.init();
     ui.init();
-    shared.renderer = std::make_unique<GLFWHandler>(platform);
+    shared.renderer = &platform;
 }
 void Application::destroy() {
     platform.destroy();
@@ -47,6 +47,6 @@ void Application::exit(int exitCode) {
 }
 
 void ImGuiHandler::destroy() {
-    glfwDestroyWindow(shared.p_viewport);
+    glfwDestroyWindow(shared.OSWindow);
     glfwTerminate();
 }

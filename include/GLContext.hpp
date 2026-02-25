@@ -7,11 +7,11 @@
 using ProgramID = GLuint;
 using ShaderID = GLuint;
 using glID = GLuint;
-struct GLContext {
+struct OpenGLHandler {
     // try to make the public interface as narrow as possible
     // TODO: Remove! this is just for testing
     SharedContext& shared;
-    GLContext(SharedContext& _s) : shared(_s) {}
+    OpenGLHandler(SharedContext& _s) : shared(_s) {}
 
     int  init();
     void drawCircle(glm::vec2 centreWorld, float radiusWorld, glm::vec4 color);

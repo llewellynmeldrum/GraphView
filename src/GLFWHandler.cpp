@@ -1,26 +1,29 @@
-#include "GLFWHandler.hpp"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
 
-#include <OpenGL/gl.h>
 #include <cmath>
 #include <queue>
 #include <random>
 #include <unordered_set>
 #include <vector>
 
+#include <OpenGL/gl.h>
 #define GL_SILENCE_DEPRECATION
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
-#include "Application.hpp"
-#include "SharedContext.hpp"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
 
-#include "GLContext.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include "Application.hpp"
+#include "GLFWHandler.hpp"
+#include "SharedContext.hpp"
+#include "glm_wrapper.hpp"
+
+#include "GLContext.hpp"
 
 void GLFWHandler::init() {
     glfwSetErrorCallback(error_callback_static);
@@ -35,51 +38,58 @@ void GLFWHandler::init() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
     auto primaryMonitor = glfwGetPrimaryMonitor();
-
     shared.p_glslVersion = getGLSLVersion();
-    shared.dpiScaling = ImGui_ImplGlfw_GetContentScaleForMonitor(primaryMonitor);
-    println("mainScale = {}", shared.dpiScaling);
-    int screenWidth = glfwGetVideoMode(primaryMonitor)->width;
-    int screenHeight = glfwGetVideoMode(primaryMonitor)->height;
+    shared.dpiScaling = getDPIScaling(primaryMonitor);
+    vec2 displaySize = getMainDisplaySize(primaryMonitor);
 
-    shared.p_viewport =
-            glfwCreateWindow((screenWidth / 2.0) * shared.dpiScaling,
-                             screenHeight * shared.dpiScaling, "Viewport title", nullptr, nullptr);
-    glfwSetWindowPos(shared.p_viewport, 0, 0);
-
-    if (!shared.p_viewport) {
-        LOG::err("Failed to initialize glfw - viewport (window) ptr is null.");
+    float scale = shared.dpiScaling;
+    int   w = (displaySize.x / (WINDOW_W_SCALE)) * scale;
+    int   h = displaySize.y;
+    shared.OSWindow = glfwCreateWindow(w, h, "GraphView", nullptr, nullptr);
+    if (!shared.OSWindow) {
+        LOG::err("Failed to initialize glfw - window ptr is null.");
         std::exit(EXIT_FAILURE);
     }
-    glfwMakeContextCurrent(shared.p_viewport);
+    glfwSetWindowPos(shared.OSWindow, 0, 0);
+    glfwMakeContextCurrent(shared.OSWindow);
     glfwSwapInterval(shared.cfg.ENABLE_VSYNC);
-    gl.init();
-    int width, height;
-    glfwGetFramebufferSize(shared.p_viewport, &width, &height);
-    OSWindowResized(width, height);
-    glfwSetWindowUserPointer(shared.p_viewport, this);
 
-    glfwSetKeyCallback(shared.p_viewport, key_callback_static);
-    glfwSetFramebufferSizeCallback(shared.p_viewport, framebuffer_size_callback_static);
-    glfwSetCursorEnterCallback(shared.p_viewport, mouse_entered_callback_static);
-    glfwSetMouseButtonCallback(shared.p_viewport, mouse_button_callback_static);
-    glfwSetScrollCallback(shared.p_viewport, mouse_scrolled_callback_static);
-    glfwSetCursorPosCallback(shared.p_viewport, mouse_move_callback);
+    if (gl.init()) {
+        LOG::err("Error initializing openGL.");
+    }
+    int width, height;
+    glfwGetFramebufferSize(shared.OSWindow, &width, &height);
+    OSWindowResized(width, height);
+    glfwSetWindowUserPointer(shared.OSWindow, this);
+
+    setCallbacks();
 
     const char* opengl_ver_str = (const char*)glGetString(GL_VERSION);
     println("OPENGL VERSION:{}", opengl_ver_str);
 }
+void GLFWHandler::setCallbacks() {
+    glfwSetKeyCallback(shared.OSWindow, key_callback_static);
+    glfwSetFramebufferSizeCallback(shared.OSWindow, framebuffer_size_callback_static);
+    glfwSetCursorEnterCallback(shared.OSWindow, mouse_entered_callback_static);
+    glfwSetMouseButtonCallback(shared.OSWindow, mouse_button_callback_static);
+    glfwSetScrollCallback(shared.OSWindow, mouse_scrolled_callback_static);
+    glfwSetCursorPosCallback(shared.OSWindow, mouse_move_callback);
+}
+
 void GLFWHandler::render() {
-    glfwGetFramebufferSize(shared.p_viewport, &scrWidth_px, &scrHeight_px);
+    for (int u = 0; u < shared.graphs.ptr->init_cfg.V; u++) {
+        shared.graphs.ptr->screenPos[u] = worldToScreen(shared.graphs.ptr->worldPos[u]);
+    }
+    glfwGetFramebufferSize(shared.OSWindow, &scrWidth_px, &scrHeight_px);
     glViewport(0, 0, scrWidth_px, scrHeight_px);
     glClearColor(COLOR(shared.bgColor));
     glClear(GL_COLOR_BUFFER_BIT);
 
     gl.viewProj = makeViewProjection(shared.cam.smoothPos, DEFAULT_ZOOM_AMOUNT / shared.cam.zoom);
-    gl.invViewProj = glm::inverse(gl.viewProj);
+    gl.invViewProj = inverse(gl.viewProj);
 
     gl.raw_viewProj = makeViewProjection(shared.cam.truePos, DEFAULT_ZOOM_AMOUNT / shared.cam.zoom);
-    gl.raw_invViewProj = glm::inverse(gl.raw_viewProj);
+    gl.raw_invViewProj = inverse(gl.raw_viewProj);
 
     {  // debug visuals to test camera smoothing
         /*
@@ -100,38 +110,19 @@ void GLFWHandler::render() {
     }
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    glfwSwapBuffers(shared.p_viewport);
+    glfwSwapBuffers(shared.OSWindow);
 }
 #define xy(var) var.x, var.y
 #define xyz(var) var.x, var.y, var.z
 #define xyzw(var) var.x, var.y, var.z, var.w
 
-glm::vec2 GLFWHandler::worldToScreen(glm::vec2 w2) {
-    if (!std::isfinite(w2.x) || !std::isfinite(w2.y)) {
-        printf("worldToScreen: BAD INPUT w2=(%f,%f)\n", w2.x, w2.y);
-        return {NAN, NAN};
-    }
-
-    glm::vec4 clip4 = gl.viewProj * glm::vec4(w2, 0.0f, 1.0f);
-
-    if (!std::isfinite(clip4.x) || !std::isfinite(clip4.y) || !std::isfinite(clip4.w) ||
-        clip4.w == 0.0f) {
-        printf("worldToScreen: BAD CLIP clip=(%f,%f,%f,%f) zoom=%f aspect=%f halfH=%f\n", clip4.x,
-               clip4.y, clip4.z, clip4.w, shared.cam.zoom, shared.cam.aspectRatio,
-               float(DEFAULT_ZOOM_AMOUNT) / shared.cam.zoom);
-        return {NAN, NAN};
-    }
-
-    glm::vec2 ndc2 = glm::vec2(clip4) / clip4.w;
-
-    glm::vec2 out{(ndc2.x * 0.5f + 0.5f) * scrWidth_px, (-ndc2.y * 0.5f + 0.5f) * scrHeight_px};
-
-    if (!std::isfinite(out.x) || !std::isfinite(out.y)) {
-        printf("worldToScreen: BAD OUT ndc=(%f,%f) out=(%f,%f)\n", ndc2.x, ndc2.y, out.x, out.y);
-    }
-    return out;
+vec2 GLFWHandler::worldToScreen(vec2 w2) {
+    auto world4 = vec4{w2.x, w2.y, 0.0f, 1.0f};
+    auto clip4 = gl.raw_viewProj * world4;
+    auto ndc2 = vec2{clip4.x, clip4.y} / clip4.w;
+    return vec2{(ndc2.x * 0.5f + 0.5f) * scrWidth_px, (-ndc2.y * 0.5f + 0.5f) * scrHeight_px};
 }
-glm::vec2 GLFWHandler::screenToWorld(glm::vec2 scr2) {
+vec2 GLFWHandler::screenToWorld(vec2 scr2) {
     // always use the raw_InvViewProj
 
     auto ndc2 = scr2;
@@ -143,105 +134,85 @@ glm::vec2 GLFWHandler::screenToWorld(glm::vec2 scr2) {
     // float ndc_z = +1;  // near plane
 
     // 2. convert ndc to clip
-    auto clip4 = glm::vec4{xy(ndc2), ndc_z, 1.0f};  // w=1 means coord rather than vector
+    auto clip4 = vec4{xy(ndc2), ndc_z, 1.0f};  // w=1 means coord rather than vector
 
     // 3. convert clip->world ==> worldPos = inverse(viewProj) * clipPos
     auto world4 = gl.raw_invViewProj * clip4;
-    auto world3 = glm::vec3{xyz(world4)};
+    auto world3 = vec3{xyz(world4)};
     world3 /= world4.w;
     // println("s:[{},{}]->w:[{},{}]", scr2.x, scr2.y, world3.x, world3.y);
-    return glm::vec2{world3.x, world3.y};
+    return vec2{world3.x, world3.y};
 }
-void GLFWHandler::drawGrid(int scrWidth, int scrHeight) {
-    gl.beginLinesPass();
-    struct Grid {
-        float     gap;
-        float     thick;
-        glm::vec4 color;
-    };
 
-    auto light = Grid{.gap = 10.0f, .thick = 1.0f, .color = {LIGREY}};
-
-    constexpr float MIN_X = -10'000;
-    constexpr float MIN_Y = -10'000;
-    constexpr float MAX_X = +10'000;
-    constexpr float MAX_Y = +10'000;
-
-    // draw a grid which is 1.5x bigger than the screen.
-    for (float x = MIN_X; x < MAX_X; x += light.gap) {
-        gl.drawLine({x, MIN_Y}, {x, MAX_Y}, light.thick, light.color);
-    }
-    for (int y = MIN_Y; y < MAX_Y; y += light.gap) {
-        gl.drawLine({MIN_X, y}, {MAX_X, y}, light.thick, light.color);
-    }
-
-    /*
-    for (int x = x0; x < x1; x += darkGap) {
-        gl.drawLine({x, y0}, {x, y1}, darkThickness, DARKGREY);
-    }
-    for (int y = y0; y < y1; y += darkThickness) {
-        gl.drawLine({x0, y}, {x1, y}, darkThickness, DARKGREY);
-    }
-    */
-    gl.endPass();
-}
-void GLFWHandler::drawGraphBounds(float thick, glm::vec4 color) {
+void GLFWHandler::drawGraphBounds(float lineThickness, vec4 boundsColor) {
     gl.beginLinesPass();
     auto& xbounds = shared.graphInitConfig.xBounds;
     auto& ybounds = shared.graphInitConfig.yBounds;
-    auto  bl = glm::vec2{xbounds[0], ybounds[0]};
-    auto  br = glm::vec2{xbounds[1], ybounds[0]};
-    auto  tl = glm::vec2{xbounds[0], ybounds[1]};
-    auto  tr = glm::vec2{xbounds[1], ybounds[1]};
+    auto  bl = vec2{xbounds[0], ybounds[0]};
+    auto  br = vec2{xbounds[1], ybounds[0]};
+    auto  tl = vec2{xbounds[0], ybounds[1]};
+    auto  tr = vec2{xbounds[1], ybounds[1]};
 
     // tl-->tr
     // ^    |
     // |    V
     // bl<--br
-    gl.drawLine(tl, tr, thick, color);
-    gl.drawLine(tr, br, thick, color);
-    gl.drawLine(br, bl, thick, color);
-    gl.drawLine(bl, tl, thick, color);
+    gl.drawLine(tl, tr, lineThickness, boundsColor);
+    gl.drawLine(tr, br, lineThickness, boundsColor);
+    gl.drawLine(br, bl, lineThickness, boundsColor);
+    gl.drawLine(bl, tl, lineThickness, boundsColor);
     gl.endPass();
 }
 
-// clang-format on
 inline void GLFWHandler::drawNode(const Graph* G, Graph::Node u) {
     const auto& draw = shared.graphs.draw;
-    const auto& pos = G->nodePositions[u];
-    const auto& nodeSize_px = draw.nodeSizeWorld - G->degreeFactor[u] * draw.nodeSizeWorld * 0.1f;
+
+    const auto& pos = G->worldPos[u];
     const auto  isNodeColored = static_cast<bool>(G->isNodeColored[u]);
-    const auto& nodeColor = (isNodeColored) ? G->nodeColors[u] : shared.graphs.draw.baseNodeColor;
-    gl.drawCircle(pos, nodeSize_px, nodeColor);
+    const auto& nodeColor = (isNodeColored) ? G->nodeColor[u] : shared.graphs.draw.baseNodeColor;
+
+    gl.drawCircle(pos, draw.nodeSizeWorld, nodeColor);
 }
 
 inline void GLFWHandler::drawEdge(const Graph* G, Graph::Edge edge) {
     const auto& draw = shared.graphs.draw;
-    const auto& upos = G->nodePositions[edge.u];
-    const auto& vpos = G->nodePositions[edge.v];
-    const auto& uScale = static_cast<float>(draw.edgeTaperOutgoing + G->degreeFactor[edge.u]);
-    const auto& vScale = static_cast<float>(draw.edgeTaperIncoming);  //* G->degreeFactor[edge.v]);
 
-    gl.drawTaperedLine(upos, vpos, uScale, vScale, draw.edgeColor);
+    const auto& uPos = G->worldPos[edge.u];
+    const auto& uScale = draw.edgeTaperOutgoing;
+
+    const auto& vPos = G->worldPos[edge.v];
+    const auto& vScale = draw.edgeTaperIncoming;
+    // u-->v
+    gl.drawTaperedLine(uPos, vPos, uScale, vScale, draw.edgeColor);
 }
 void GLFWHandler::drawGraph(const Graph* G) {
     gl.beginLinesPass();
-    for (size_t e = 0; e < G->init_cfg.E; e++) {
-        drawEdge(G, G->edges[e]);
+    for (size_t edgeIdx = 0; edgeIdx < G->init_cfg.E; edgeIdx++) {
+        drawEdge(G, G->edges[edgeIdx]);
     }
     gl.endPass();
 
     gl.beginCirclePass();
-    for (size_t u = 0; u < G->init_cfg.V; u++) {
-        drawNode(G, u);
+    for (size_t nodeIdx = 0; nodeIdx < G->init_cfg.V; nodeIdx++) {
+        drawNode(G, nodeIdx);
     }
     gl.endPass();
 }
 
-glm::vec2 GLFWHandler::getGLFWWindowSize() {
+vec2 GLFWHandler::getOSWindowSize() {
     int windowWidth, windowHeight;
-    glfwGetWindowSize(shared.p_viewport, &windowWidth, &windowHeight);
-    return glm::vec2{windowWidth, windowHeight};
+    glfwGetWindowSize(shared.OSWindow, &windowWidth, &windowHeight);
+    return vec2{windowWidth, windowHeight};
+}
+
+float GLFWHandler::getDPIScaling(GLFWmonitor* monitor) {
+    return ImGui_ImplGlfw_GetContentScaleForMonitor(monitor);
+}
+
+vec2 GLFWHandler::getMainDisplaySize(GLFWmonitor* monitor) {
+    int displayWidth = glfwGetVideoMode(monitor)->width;
+    int displayHeight = glfwGetVideoMode(monitor)->height;
+    return vec2{displayWidth, displayHeight};
 }
 void GLFWHandler::destroy() {
     gl.cleanup();
@@ -249,7 +220,7 @@ void GLFWHandler::destroy() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 }
-glm::vec2 lerp2(glm::vec2 a, glm::vec2 b, double alpha) {
+vec2 lerp2(vec2 a, vec2 b, double alpha) {
     a.x = std::lerp(a.x, b.x, alpha);
     a.y = std::lerp(a.y, b.y, alpha);
     return a;
@@ -257,16 +228,19 @@ glm::vec2 lerp2(glm::vec2 a, glm::vec2 b, double alpha) {
 void GLFWHandler::applyCameraSmoothing(double dT) {
     // yo i got no clue what this line does like not even the slightest
     double alpha = 1.0f - std::exp(-(10.0f / shared.cam.smoothFactor) * dT);
-
     shared.cam.smoothPos = lerp2(shared.cam.smoothPos, shared.cam.truePos, alpha);
 }
+
 void GLFWHandler::handleInputs() {
-    if (tprev == -1) tprev = glfwGetTime();
-    double tnow = glfwGetTime();
-    double dT = tnow - tprev;
-    tprev = tnow;
+    if (tLastFrame == -1) tLastFrame = glfwGetTime();
+    double tCurrent = glfwGetTime();
+    double dT = tCurrent - tLastFrame;
+    tLastFrame = tCurrent;
+
     applyCameraSmoothing(dT);
-    if (shared.graphExists) shared.graphs.ptr->update(dT);
+    if (shared.graphExists) {
+        shared.graphs.ptr->updateGraph(dT);
+    }
 
     auto& io = IG::GetIO();
     shared.ignoreMouseInput = io.WantCaptureMouse;
@@ -275,9 +249,104 @@ void GLFWHandler::handleInputs() {
 }
 
 bool GLFWHandler::shouldClose() {
-    return glfwWindowShouldClose(shared.p_viewport);
+    return glfwWindowShouldClose(shared.OSWindow);
 }
 
+// exclusively callback
+
+vec2 GLFWHandler::getMousePosWorld() {
+    return screenToWorld(getMousePosScreen());
+}
+vec2 GLFWHandler::getMousePosScreen() {
+    double x0, y0;
+    glfwGetCursorPos(shared.OSWindow, &x0, &y0);
+    vec2 cursorPos = {static_cast<float>(x0), static_cast<float>(y0)};
+    return cursorPos;
+}
+void GLFWHandler::OSWindowResized(int width, int height) {
+    this->scrWidth_px = width;
+    this->scrHeight_px = height;
+    shared.cam.aspectRatio = (height > 0) ? (float)width / (float)height : 1.0f;
+}
+
+mat4 GLFWHandler::makeViewProjection(vec2 pos, float zoomHalfHeight) {
+    const float halfH = zoomHalfHeight;
+    const float halfW = halfH * shared.cam.aspectRatio;
+
+    // Projection: map world rectangle -> clip
+    mat4 proj = ortho(-halfW, +halfW,  // left, right
+                      -halfH, +halfH,  // bottom, top
+                      -1.0f, +1.0f);
+
+    // View: move the world opposite the camera position
+    mat4 view = translate(mat4(1.0f), vec3(-pos, 0.0f));
+
+    return proj * view;
+}
+
+/*
+Everything below is a static callback or a mostly useless but long winded function.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
+// clang-format off
+void GLFWHandler::error_callback_static(int error, const char* description) {
+    LOG::err("GLFW Error {}: {}\n", error, description);
+}
+void GLFWHandler::mouse_scrolled_callback_static(GLFWwindow* window, double xoffset, double yoffset) {
+    auto* inst = static_cast<GLFWHandler*>(glfwGetWindowUserPointer(window));
+    if (inst) {
+        inst->mouseScrolled(xoffset, yoffset);
+    }
+}
+void GLFWHandler::mouse_entered_callback_static(GLFWwindow* window, int entered) {
+    auto* inst = static_cast<GLFWHandler*>(glfwGetWindowUserPointer(window));
+    if (inst) {
+        entered ? inst->mouseEnteredOSWindow() : inst->mouseLeftOSWindow();
+    }
+}
+void GLFWHandler::mouse_button_callback_static(GLFWwindow* window, int button, int action, int mods) {
+    auto* inst = static_cast<GLFWHandler*>(glfwGetWindowUserPointer(window));
+    if (inst) {
+        inst->mousePressed(button, action, mods);
+    }
+}
+void GLFWHandler::mouse_move_callback(GLFWwindow* window, double x, double y) {
+    auto* inst = static_cast<GLFWHandler*>(glfwGetWindowUserPointer(window));
+    if (inst) {
+        inst->mouseMoved(vec2(x, y));
+    }
+}
+
+void GLFWHandler::key_callback_static(GLFWwindow* window, int key, int scancode, int action,
+                                      int mods) {
+    auto* inst = static_cast<GLFWHandler*>(glfwGetWindowUserPointer(window));
+    if (inst) {
+        inst->keyPressed(key, scancode, action, mods);
+    }
+}
+
+void GLFWHandler::framebuffer_size_callback_static(GLFWwindow* window, int width, int height) {
+    auto* inst = static_cast<GLFWHandler*>(glfwGetWindowUserPointer(window));
+    if (inst) {
+        inst->OSWindowResized(width, height);
+    }
+}
 const char* GLFWHandler::getGLSLVersion() {
 #if defined(__APPLE__)
     // GL 3.2 + GLSL 150
@@ -295,162 +364,4 @@ const char* GLFWHandler::getGLSLVersion() {
     // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
     return glslVersion;
-}
-// exclusively callback
-void GLFWHandler::error_callback_static(int error, const char* description) {
-    LOG::err("GLFW Error {}: {}\n", error, description);
-}
-
-glm::vec2 GLFWHandler::getMousePosWorld() {
-    return screenToWorld(getMousePosScreen());
-}
-glm::vec2 GLFWHandler::getMousePosScreen() {
-    double x0, y0;
-    glfwGetCursorPos(shared.p_viewport, &x0, &y0);
-    glm::vec2 cursorPos = {static_cast<float>(x0), static_cast<float>(y0)};
-    return cursorPos;
-}
-void GLFWHandler::mouseMoved(glm::vec2 nPos) {
-    if (shared.ignoreMouseInput) {
-        glfwSetInputMode(shared.p_viewport, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        input.dragging = false;
-        return;
-    }
-    if (input.dragging) {
-        const glm::vec2 nowWorld = getMousePosWorld();
-        const glm::vec2 delta = input.grabScreen - nowWorld;
-        shared.cam.truePos += delta;
-    }
-}
-void GLFWHandler::mousePressed(int button, int action, int mods) {
-    if (shared.ignoreMouseInput) {
-        glfwSetInputMode(shared.p_viewport, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        input.dragging = false;
-        return;
-    }
-    if (button == GLFW_MOUSE_BUTTON_1) {
-        if (action == GLFW_PRESS) {
-            if (!input.dragging) {
-                //                glfwSetInputMode(shared.p_viewport, GLFW_CURSOR,
-                //                GLFW_CURSOR_DISABLED);
-            }
-            input.dragging = true;
-            input.grabScreen = getMousePosWorld();
-        }
-        if (action == GLFW_RELEASE) {
-            glfwSetInputMode(shared.p_viewport, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            input.dragging = false;
-            // move cursor to the place it now exists in
-        }
-    }
-    // button 1 = right, 0 = left
-    // action 1 = press, 0 = unpress
-}
-
-static float zoom = 1.0f;
-
-void GLFWHandler::mouseScrolled([[maybe_unused]] double xoffset, double yoffset) {
-    float delta = shared.cam.zoom * (yoffset / 10.0);
-    if (shared.cam.zoom + delta > shared.cam.MAX_ZOOM) {
-        shared.cam.zoom = shared.cam.MAX_ZOOM;
-    } else if (shared.cam.zoom + delta < shared.cam.MIN_ZOOM) {
-        shared.cam.zoom = shared.cam.MIN_ZOOM;
-    } else {
-        shared.cam.zoom += delta;
-    }
-}
-void GLFWHandler::mouseEnteredOSWindow() {
-}
-void GLFWHandler::mouseLeftOSWindow() {
-}
-void GLFWHandler::keyPressed(int key, int scancode, int action, int mods) {
-    auto& update = shared.graphs.update;
-    if (shared.cfg.PRINT_KEY_EVENTS)
-        println("Key:{}, scancode:{}, action:{}, mods:{}", key, scancode, action, mods);
-    if (action == GLFW_PRESS) {
-        switch (key) {
-        case 'C':
-            if (mods == GLFW_MOD_CONTROL) {
-                exit(EXIT_SUCCESS);
-            }
-            break;
-        case ' ':
-            {
-                if (update.isPaused) {
-                    update.isPaused = false;
-                    update.timeScale = 1.0f;
-                } else {
-                    update.isPaused = true;
-                    update.timeScale = 0.0f;
-                }
-                break;
-            }
-        case 'R': shared.uiRequestsGraphGeneration = true; break;
-        case 'F':
-            shared.graphs.update.isForceDirected = !shared.graphs.update.isForceDirected;
-            break;
-
-        default: break;
-        }
-    }
-}
-void GLFWHandler::OSWindowResized(int width, int height) {
-    this->scrWidth_px = width;
-    this->scrHeight_px = height;
-    shared.cam.aspectRatio = (height > 0) ? (float)width / (float)height : 1.0f;
-}
-
-glm::mat4 GLFWHandler::makeViewProjection(glm::vec2 pos, float zoomHalfHeight) {
-    const float halfH = zoomHalfHeight;
-    const float halfW = halfH * shared.cam.aspectRatio;
-
-    // Projection: map world rectangle -> clip
-    glm::mat4 proj = glm::ortho(-halfW, +halfW,  // left, right
-                                -halfH, +halfH,  // bottom, top
-                                -1.0f, +1.0f);
-
-    // View: move the world opposite the camera position
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-pos, 0.0f));
-
-    return proj * view;
-}
-// clang-format off
-void GLFWHandler::mouse_scrolled_callback_static(GLFWwindow* window, double xoffset, double yoffset) {
-    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (inst) {
-        inst->mouseScrolled(xoffset, yoffset);
-    }
-}
-void GLFWHandler::mouse_entered_callback_static(GLFWwindow* window, int entered) {
-    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (inst) {
-        entered ? inst->mouseEnteredOSWindow() : inst->mouseLeftOSWindow();
-    }
-}
-void GLFWHandler::mouse_button_callback_static(GLFWwindow* window, int button, int action, int mods) {
-    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (inst) {
-        inst->mousePressed(button, action, mods);
-    }
-}
-void GLFWHandler::mouse_move_callback(GLFWwindow* window, double x, double y) {
-    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (inst) {
-        inst->mouseMoved(glm::vec2(x, y));
-    }
-}
-
-void GLFWHandler::key_callback_static(GLFWwindow* window, int key, int scancode, int action,
-                                      int mods) {
-    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (inst) {
-        inst->keyPressed(key, scancode, action, mods);
-    }
-}
-
-void GLFWHandler::framebuffer_size_callback_static(GLFWwindow* window, int width, int height) {
-    auto* inst = (GLFWHandler*)glfwGetWindowUserPointer(window);
-    if (inst) {
-        inst->OSWindowResized(width, height);
-    }
 }

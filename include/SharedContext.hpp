@@ -5,6 +5,7 @@
 #include "Vectors.hpp"
 #include "log.hpp"
 #include <glm/glm.hpp>
+#include <glm_wrapper.hpp>
 #include <random>
 
 // forward declare so as to not have to include entire header
@@ -17,6 +18,7 @@ struct GLFWHandler;
 
 struct Application;
 struct Graph;
+using Node = int;
 struct SharedContext {
     struct Camera {
         static constexpr float w2sFactor = 2.0f;  // how many world units per pixel
@@ -34,12 +36,12 @@ struct SharedContext {
     float       dpiScaling;
     const char* p_glslVersion{nullptr};
 
-    bool                         ignoreMouseInput = false;
-    bool                         ignoreKeyboardInput = false;
-    bool                         uiRequestsGraphGeneration = false;
-    const GLColor&               bgColor = DDARKGREY;
-    GLFWwindow*                  p_viewport{nullptr};
-    std::unique_ptr<GLFWHandler> renderer;
+    bool           ignoreMouseInput = false;
+    bool           ignoreKeyboardInput = false;
+    bool           uiRequestsGraphGeneration = false;
+    const GLColor& bgColor = DDARKGREY;
+    GLFWwindow*    OSWindow{nullptr};
+    GLFWHandler*   renderer;
 
     bool graphExists = false;
     struct GraphInitConfig {
@@ -78,12 +80,31 @@ struct SharedContext {
             float currTemp;
         } update;
         struct Algorithms {
-            enum ID {
+            enum AlgoID {
+                NO_ALGO = -1,
                 BFS = 0,
                 DFS = 1,
             };
             std::vector<std::string> list = {"BFS", "DFS"};
-            int                      selected = 0;
+
+            int selectedAlgorithm = -1;
+            enum SelectionType {
+                NONE = 0,
+                SOURCE = 1,
+                DEST = 2,
+            };
+            enum RunState {
+                SelectingAlgorithm = 0,
+                SelectingSource = 1,
+                SelectingDest = 2,
+                Ready = 3,
+            };
+
+            RunState      state = SelectingAlgorithm;
+            SelectionType userSelectingNode = SOURCE;
+            Node          sourceNode = -1;
+            Node          destNode = -1;
+
         } algos;
     } graphs;
 

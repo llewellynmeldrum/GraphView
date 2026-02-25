@@ -120,23 +120,23 @@ const char* circle_frag_shader_src = R"GLSL(
         }
     )GLSL";
 
-void GLContext::beginLinesPass() {
+void OpenGLHandler::beginLinesPass() {
     glUseProgram(lines.prog);
     glBindVertexArray(lines.VAO);
     glUniformMatrix4fv(lines.attr.uViewProj, 1, GL_FALSE, glm::value_ptr(viewProj));
 }
 
-void GLContext::beginCirclePass() {
+void OpenGLHandler::beginCirclePass() {
     glUseProgram(circles.prog);
     glBindVertexArray(circles.VAO);
     glUniformMatrix4fv(circles.attr.uViewProj, 1, GL_FALSE, glm::value_ptr(viewProj));
 }
 
-void GLContext::endPass() {
+void OpenGLHandler::endPass() {
     glBindVertexArray(0);
     glUseProgram(0);
 }
-void GLContext::drawCircle(glm::vec2 centre, float radius, glm::vec4 col) {
+void OpenGLHandler::drawCircle(glm::vec2 centre, float radius, glm::vec4 col) {
     // relatively slow, uses uniforms and shit instead of buffers because im lazy
     glUseProgram(circles.prog);
     glUniform2fv(circles.attr.uCentreWorld, 1, glm::value_ptr(centre));
@@ -146,10 +146,11 @@ void GLContext::drawCircle(glm::vec2 centre, float radius, glm::vec4 col) {
     glBindVertexArray(circles.VAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
-void GLContext::drawLine(glm::vec2 s, glm::vec2 t, GLfloat w, glm::vec4 col) {
+void OpenGLHandler::drawLine(glm::vec2 s, glm::vec2 t, GLfloat w, glm::vec4 col) {
     drawTaperedLine(s, t, w, w, col);
 }
-void GLContext::drawTaperedLine(glm::vec2 s, glm::vec2 t, GLfloat w0, GLfloat w1, glm::vec4 col) {
+void OpenGLHandler::drawTaperedLine(glm::vec2 s, glm::vec2 t, GLfloat w0, GLfloat w1,
+                                    glm::vec4 col) {
     glUniform4fv(lines.attr.uColor, 1, glm::value_ptr(col));
     glUniform2fv(lines.attr.uA, 1, glm::value_ptr(s));
     glUniform2fv(lines.attr.uB, 1, glm::value_ptr(t));
@@ -157,7 +158,7 @@ void GLContext::drawTaperedLine(glm::vec2 s, glm::vec2 t, GLfloat w0, GLfloat w1
     glUniform1f(lines.attr.uW1, w1);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
-void GLContext::createLineProgram() {
+void OpenGLHandler::createLineProgram() {
     ShaderID vtx = initShader(GL_VERTEX_SHADER, line_vtx_shader_src, "Line:Vertex");
     ShaderID frag = initShader(GL_FRAGMENT_SHADER, line_frag_shader_src, "Line:Frag");
     lines.prog = initProgram(vtx, frag);
@@ -187,7 +188,7 @@ void GLContext::createLineProgram() {
     glBindVertexArray(0);
 }
 
-void GLContext::createCircleProgram() {
+void OpenGLHandler::createCircleProgram() {
     ShaderID vtx = initShader(GL_VERTEX_SHADER, circle_vtx_shader_src, "Circle::vertex");
     ShaderID frag = initShader(GL_FRAGMENT_SHADER, circle_frag_shader_src, "Circle::frag");
     circles.prog = initProgram(vtx, frag);
@@ -212,16 +213,16 @@ void GLContext::createCircleProgram() {
     glBindVertexArray(0);
 }
 
-void GLContext::cleanup() {
+void OpenGLHandler::cleanup() {
     glDeleteBuffers(1, &circles.quadVBO);
     glDeleteVertexArrays(1, &circles.VAO);
     glDeleteProgram(circles.prog);
 }
 // GENERIC
-int GLContext::init() {
+int OpenGLHandler::init() {
     if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
         std::println("Error! unable to load GLAD!");
-        std::exit(EXIT_FAILURE);
+        return -1;
     }
     // init circle program
     createCircleProgram();
@@ -232,15 +233,8 @@ int GLContext::init() {
     return 0;
 }
 
-/*
-
-
-
-
-*/
-
-ProgramID initProgram(GLuint vertexShaderID, GLuint fragShaderID) {
-    ProgramID program = glCreateProgram();
+GLuint initProgram(GLuint vertexShaderID, GLuint fragShaderID) {
+    GLuint program = glCreateProgram();
     glAttachShader(program, vertexShaderID);
     glAttachShader(program, fragShaderID);
     glLinkProgram(program);
@@ -255,7 +249,7 @@ ProgramID initProgram(GLuint vertexShaderID, GLuint fragShaderID) {
     return program;
 }
 
-ShaderID initShader(GLenum type, const char* src, const char* file) {
+GLuint initShader(GLenum type, const char* src, const char* file) {
     GLuint shaderID = glCreateShader(type);
     glShaderSource(shaderID, 1, &src, nullptr);
     glCompileShader(shaderID);
@@ -266,25 +260,17 @@ ShaderID initShader(GLenum type, const char* src, const char* file) {
     }
     return shaderID;
 }
-void GLContext::setCircleAttributeLocations() {
+void OpenGLHandler::setCircleAttributeLocations() {
     circles.attr.uViewProj = glGetUniformLocation(circles.prog, "uViewProj");
     circles.attr.uCentreWorld = glGetUniformLocation(circles.prog, "uCentreWorld");
     circles.attr.uRadiusWorld = glGetUniformLocation(circles.prog, "uRadiusWorld");
     circles.attr.uColor = glGetUniformLocation(circles.prog, "uColor");
 }
-void GLContext::setLineAttributeLocations() {
+void OpenGLHandler::setLineAttributeLocations() {
     lines.attr.uViewProj = glGetUniformLocation(lines.prog, "uViewProj");
     lines.attr.uA = glGetUniformLocation(lines.prog, "uA");
     lines.attr.uB = glGetUniformLocation(lines.prog, "uB");
     lines.attr.uW0 = glGetUniformLocation(lines.prog, "uW0");
     lines.attr.uW1 = glGetUniformLocation(lines.prog, "uW1");
     lines.attr.uColor = glGetUniformLocation(lines.prog, "uColor");
-}
-
-void GLContext::setLineMesh() {
-}
-
-void bindVAO(VertexAttributes atr) {
-    glEnableVertexAttribArray(atr.idx);
-    glVertexAttribPointer(atr.idx, atr.size, atr.type, atr.normalized, atr.stride, atr.ptr);
 }

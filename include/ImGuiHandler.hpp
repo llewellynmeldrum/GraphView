@@ -28,9 +28,15 @@ struct ImGuiHandler {
         style.ScaleAllSizes(shared.dpiScaling);
         style.FontScaleDpi = shared.dpiScaling;
 
-        ImGui_ImplGlfw_InitForOpenGL(shared.p_viewport, true);
+        H1 = io.Fonts->AddFontFromFileTTF("fonts/ProggyClean.ttf", 24.0f);
+        H2 = io.Fonts->AddFontFromFileTTF("fonts/ProggyClean.ttf", 18.0f);
+        H3 = io.Fonts->AddFontFromFileTTF("fonts/ProggyClean.ttf", 16.0f);
+        ImGui_ImplGlfw_InitForOpenGL(shared.OSWindow, true);
         ImGui_ImplOpenGL3_Init(shared.p_glslVersion);
     }
+    ImFont* H1;
+    ImFont* H2;
+    ImFont* H3;
 
     void drawUI();
     void destroy();
@@ -52,6 +58,13 @@ struct ImGuiHandler {
     Vec2 drawGraphVisualSettings(WindowConfig win);
     Vec2 drawPlaybackControlsWindow(WindowConfig win);
     Vec2 drawAlgorithmRunner(WindowConfig win);
+
+    struct NodeOverlayConfig {
+        bool  blinkAllNodes;
+        ImU32 col;
+        ImU32 selected_col;
+    };
+    void drawNodeIDOverlay(NodeOverlayConfig cfg);
     void drawOverlay();
     void imguiTextWithTooltip(const char* text, const char* tooltip);
     void setTooltipWrap(const char* tooltip);
